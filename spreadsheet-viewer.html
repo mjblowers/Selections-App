@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spreadsheet Row Selector</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .upload-section {
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .file-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .file-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            font-size: 15px;
+        }
+
+        .file-btn.secondary {
+            background: #5568d3;
+        }
+
+        .file-name {
+            margin-top: 6px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        /* House row */
+        .house-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .house-input {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            min-width: 240px;
+        }
+
+        #houseNameInput {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            font-size: 16px;
+        }
+
+        #houseNameInput:disabled {
+            background: #f3f4f6;
+            color: #444;
+        }
+
+        .confirm-btn,
+        .edit-btn {
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .confirm-btn {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .edit-btn {
+            background: #f1c40f;
+            color: #111;
+        }
+
+        .floor-plan-select,
+        .spec-select {
+            min-width: 180px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            background: white;
+        }
+
+        .spec-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 180px;
+        }
+
+        .selector-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .selector-section.active {
+            display: block;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .row-details {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .row-details.active {
+            display: block;
+        }
+
+        .row-details h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .assign-row {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .assign-row select {
+            flex: 1;
+            margin: 0;
+        }
+
+        .assign-btn {
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .assign-btn:hover {
+            background: #28b463;
+        }
+
+        .selected-items {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .selected-items.active {
+            display: block;
+        }
+
+        .room-section {
+            margin-bottom: 18px;
+        }
+
+        .room-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .selected-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .selected-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .selected-item-summary {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .selected-item-details {
+            font-size: 13px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        @media (max-width:800px) {
+            .house-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .floor-plan-select,
+            .spec-select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📊 Selection Selector Appy App</h1>
+
+        <div class="upload-section">
+            <div class="file-buttons">
+                <button id="startScratchBtn" class="file-btn">Start from scratch :(</button>
+                <button id="existingSpecBtn" class="file-btn secondary">Choose existing spec</button>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
+            <div class="file-name" id="fileName"></div>
+            <div class="error" id="error"></div>
+        </div>
+
+        <!-- House name + Floor Plan row -->
+        <div class="house-row">
+            <div class="house-input">
+                <input id="houseNameInput" type="text" placeholder="Enter house name" />
+                <button id="confirmHouseBtn" class="confirm-btn">Confirm</button>
+                <button id="editHouseBtn" class="edit-btn" style="display:none;">Edit</button>
+            </div>
+            <select id="floorPlanSelect" class="floor-plan-select" aria-label="Floor Plan">
+                <option value="">-- Floor Plan --</option>
+                <option value="Olympia">Olympia</option>
+                <option value="Oakley">Oakley</option>
+                <option value="MGM Grand">MGM Grand</option>
+            </select>
+        </div>
+
+        <div class="selector-section" id="selectorSection">
+            <label for="rowSelect">Select a Row:</label>
+            <select id="rowSelect">
+                <option value="">-- Choose a row --</option>
+            </select>
+        </div>
+
+        <div class="row-details" id="rowDetails">
+            <h3>Row Details</h3>
+            <div id="detailsContent"></div>
+
+            <div class="assign-row">
+                <select id="roomSelect">
+                    <option value="">-- Choose a room --</option>
+                </select>
+                <button id="assignBtn" class="assign-btn">Assign to Room</button>
+            </div>
+        </div>
+
+        <div class="selected-items" id="selectedItems">
+            <h3>Selected Items</h3>
+            <button id="exportBtn" class="file-btn" style="margin-left:12px;" disabled>Export to Excel</button>
+            <div id="selectedItemsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const rooms = [
+            "Master", "Living", "Dining", "Bedroom 1", "Bedroom 2", "Office", "Garage", "Dude Cave", "She Shed"
+        ];
+
+        let fileMode = 'scratch'; // 'scratch' or 'existing'
+        let spreadsheetData = [];
+        let headers = [];
+        let selectedItems = [];
+        let currentSelectedRow = null;
+
+        // UI elements
+        const startScratchBtn = document.getElementById('startScratchBtn');
+        const existingSpecBtn = document.getElementById('existingSpecBtn');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const errorDiv = document.getElementById('error');
+
+        const houseNameInput = document.getElementById('houseNameInput');
+        const confirmHouseBtn = document.getElementById('confirmHouseBtn');
+        const editHouseBtn = document.getElementById('editHouseBtn');
+        const floorPlanSelect = document.getElementById('floorPlanSelect');
+
+        const selectorSection = document.getElementById('selectorSection');
+        const rowSelect = document.getElementById('rowSelect');
+        const rowDetails = document.getElementById('rowDetails');
+        const detailsContent = document.getElementById('detailsContent');
+        const roomSelect = document.getElementById('roomSelect');
+        const assignBtn = document.getElementById('assignBtn');
+        const selectedItemsSection = document.getElementById('selectedItems');
+        const selectedItemsList = document.getElementById('selectedItemsList');
+
+        const exportBtn = document.getElementById('exportBtn');
+
+        // Setup initial room dropdown
+        populateRoomDropdown();
+
+        // Event listeners
+        startScratchBtn.addEventListener('click', () => {
+            fileMode = 'scratch';
+            fileInput.value = '';
+            fileInput.click();
+        });
+        existingSpecBtn.addEventListener('click', () => {
+            fileMode = 'existing';
+            fileInput.value = '';
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', handleFileUpload);
+
+        rowSelect.addEventListener('change', handleRowSelect);
+        assignBtn.addEventListener('click', handleAssignToRoom);
+        confirmHouseBtn.addEventListener('click', handleConfirmHouse);
+        editHouseBtn.addEventListener('click', handleEditHouse);
+        exportBtn.addEventListener('click', exportToExcel);
+
+        function handleConfirmHouse() {
+            const name = houseNameInput.value.trim();
+            if (!name) {
+                errorDiv.textContent = 'Please enter a house name before confirming.';
+                return;
+            }
+            errorDiv.textContent = '';
+            houseNameInput.disabled = true;
+            confirmHouseBtn.style.display = 'none';
+            editHouseBtn.style.display = 'inline-block';
+        }
+
+        function handleEditHouse() {
+            houseNameInput.disabled = false;
+            houseNameInput.focus();
+            editHouseBtn.style.display = 'none';
+            confirmHouseBtn.style.display = 'inline-block';
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileName.textContent = `Selected: ${file.name}`;
+            errorDiv.textContent = '';
+
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                try {
+                    const data = new Uint8Array(ev.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    if (jsonData.length < 2) {
+                        throw new Error('Spreadsheet must have at least a header row and one data row');
+                    }
+
+                    headers = jsonData[0];
+                    spreadsheetData = jsonData.slice(1).map((row, index) => {
+                        const rowObj = { _rowNumber: index + 2 };
+                        headers.forEach((header, i) => {
+                            rowObj[header] = row[i] !== undefined ? row[i] : '';
+                        });
+                        return rowObj;
+                    });
+
+                    populateDropdown();
+                    selectorSection.classList.add('active');
+                    rowDetails.classList.remove('active');
+
+                    if (fileMode === 'existing') {
+                        // Look for rows where column 1 (first column) matches a room name (case-insensitive)
+                        const matches = [];
+                        jsonData.slice(1).forEach((row, idx) => {
+                            const col1 = row[0] !== undefined && row[0] !== null ? String(row[0]).trim() : '';
+                            if (!col1) return;
+                            const matchedRoom = rooms.find(r => r.toLowerCase() === col1.toLowerCase());
+                            if (matchedRoom) {
+                                const rowObj = { _rowNumber: idx + 2 };
+                                headers.forEach((header, i) => {
+                                    rowObj[header] = row[i] !== undefined ? row[i] : '';
+                                });
+                                rowObj.room = matchedRoom;
+                                matches.push(rowObj);
+                            }
+                        });
+
+                        if (matches.length === 0) {
+                            errorDiv.textContent = 'No rows found with a room in column 1 matching known room types.';
+                        } else {
+                            matches.forEach(m => {
+                                if (!selectedItems.some(si => si._rowNumber === m._rowNumber)) {
+                                    selectedItems.push(m);
+                                }
+                            });
+                            displaySelectedItems();
+
+                            errorDiv.textContent = '';
+                        }
+                    }
+
+                } catch (error) {
+                    errorDiv.textContent = `Error: ${error.message}`;
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+
+        }
+        function exportToExcel() {
+  if (!selectedItems || selectedItems.length === 0) {
+    errorDiv.textContent = 'Nothing to export.';
+    return;
+  }
+
+  // Determine data headers (fall back to headers captured from file)
+  const dataHeaders = (headers && headers.length)
+    ? headers.slice()
+    : Array.from(new Set(selectedItems.flatMap(it => Object.keys(it))))
+        .filter(k => k !== 'room' && k !== '_rowNumber');
+
+  const selectionCols = ['Room', '_rowNumber', ...dataHeaders];
+
+  const wb = XLSX.utils.book_new();
+
+  // Summary sheet
+  const house = (houseNameInput && houseNameInput.value) ? houseNameInput.value : '';
+  const floor = (floorPlanSelect && floorPlanSelect.value) ? floorPlanSelect.value : '';
+  const spec = (document.getElementById('specSelect') && document.getElementById('specSelect').value) ? document.getElementById('specSelect').value : '';
+  const summary = [
+    ['House Name', house],
+    ['Floor Plan', floor],
+    ['Spec', spec],
+    ['Exported At', new Date().toLocaleString()]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary');
+
+  // All selections sheet
+  const aoaAll = [selectionCols];
+  selectedItems.forEach(item => {
+    const row = selectionCols.map(col => {
+      if (col === 'Room') return item.room || '';
+      if (col === '_rowNumber') return item._rowNumber || '';
+      return item[col] !== undefined ? item[col] : '';
+    });
+    aoaAll.push(row);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaAll), 'All Selections');
+
+  // Group by room and create a sheet per room (and Unassigned)
+  const grouped = {};
+  rooms.forEach(r => grouped[r] = []);
+  grouped['Unassigned'] = [];
+
+  selectedItems.forEach(it => {
+    const key = it.room && grouped[it.room] ? it.room : 'Unassigned';
+    grouped[key].push(it);
+  });
+
+  const sanitizeSheetName = (name) => {
+    const safe = String(name).replace(/[\/\\\?\*\[\]:]/g, '').slice(0, 31) || 'Sheet';
+    return safe;
+  };
+
+  Object.keys(grouped).forEach(roomName => {
+    const items = grouped[roomName];
+    if (!items || items.length === 0) return;
+
+    const aoa = [selectionCols];
+    items.forEach(item => {
+      const row = selectionCols.map(col => {
+        if (col === 'Room') return item.room || '';
+        if (col === '_rowNumber') return item._rowNumber || '';
+        return item[col] !== undefined ? item[col] : '';
+      });
+      aoa.push(row);
+    });
+
+    const sheetName = sanitizeSheetName(roomName);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName);
+  });
+
+  // Build file name and write
+  const fileNameSafe = (house || 'Selections').replace(/[\/\\:?<>|*"]/g, '');
+  const fileName = `${fileNameSafe} - ${floor || 'Plan'} - selections.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+        function populateDropdown() {
+            rowSelect.innerHTML = '<option value="">-- Choose a row --</option>';
+            spreadsheetData.forEach((row, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const displayValues = headers.slice(0, 3).map(h => row[h]).filter(v => v !== '');
+                option.textContent = `Row ${row._rowNumber}: ${displayValues.join(' - ')}`;
+                rowSelect.appendChild(option);
+            });
+        }
+
+        function populateRoomDropdown() {
+            roomSelect.innerHTML = '<option value="">-- Choose a room --</option>';
+            rooms.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                roomSelect.appendChild(opt);
+            });
+        }
+
+        function handleRowSelect(e) {
+            const selectedIndex = e.target.value;
+            if (selectedIndex === '') {
+                rowDetails.classList.remove('active');
+                currentSelectedRow = null;
+                return;
+            }
+            const selectedRow = spreadsheetData[selectedIndex];
+            currentSelectedRow = selectedRow;
+            displayRowDetails(selectedRow);
+
+            const already = selectedItems.find(it => it._rowNumber === selectedRow._rowNumber);
+            if (already) {
+                roomSelect.value = already.room || '';
+            } else {
+                roomSelect.value = '';
+            }
+        }
+
+        function displayRowDetails(row) {
+            detailsContent.innerHTML = '';
+            headers.forEach(header => {
+                const detailItem = document.createElement('div');
+                detailItem.className = 'detail-item';
+
+                const label = document.createElement('span');
+                label.className = 'detail-label';
+                label.textContent = header;
+
+                const value = document.createElement('span');
+                value.className = 'detail-value';
+                value.textContent = row[header] !== '' ? row[header] : '(empty)';
+
+                detailItem.appendChild(label);
+                detailItem.appendChild(value);
+                detailsContent.appendChild(detailItem);
+            });
+            rowDetails.classList.add('active');
+        }
+
+        function handleAssignToRoom() {
+            if (!currentSelectedRow) {
+                errorDiv.textContent = 'No row selected to assign.';
+                return;
+            }
+            const selectedRoom = roomSelect.value;
+            if (!selectedRoom) {
+                errorDiv.textContent = 'Please choose a room.';
+                return;
+            }
+            errorDiv.textContent = '';
+
+            const existsIndex = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber);
+            if (existsIndex !== -1) {
+                selectedItems[existsIndex].room = selectedRoom;
+            } else {
+                const itemToAdd = { ...currentSelectedRow, room: selectedRoom };
+                selectedItems.push(itemToAdd);
+            }
+
+            displaySelectedItems();
+
+            currentSelectedRow = null;
+            rowDetails.classList.remove('active');
+            rowSelect.value = '';
+            roomSelect.value = '';
+        }
+
+        function displaySelectedItems() {
+            exportBtn.disabled = selectedItems.length === 0
+
+            if (selectedItems.length === 0) {
+                selectedItemsSection.classList.remove('active');
+                selectedItemsList.innerHTML = '';
+                return;
+            }
+            selectedItemsSection.classList.add('active');
+            selectedItemsList.innerHTML = '';
+
+            const grouped = {};
+            rooms.forEach(r => grouped[r] = []);
+            grouped['Unassigned'] = [];
+
+            selectedItems.forEach((it, idx) => {
+                const key = it.room && grouped[it.room] ? it.room : 'Unassigned';
+                grouped[key].push({ item: it, originalIndex: idx });
+            });
+
+            Object.keys(grouped).forEach(roomName => {
+                const items = grouped[roomName];
+                if (items.length === 0) return;
+                const roomDiv = document.createElement('div');
+                roomDiv.className = 'room-section';
+
+                const title = document.createElement('div');
+                title.className = 'room-title';
+                title.textContent = roomName;
+                roomDiv.appendChild(title);
+
+                items.forEach(({ item }) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'selected-item';
+
+                    const content = document.createElement('div');
+                    content.className = 'selected-item-content';
+
+                    const summary = document.createElement('div');
+                    summary.className = 'selected-item-summary';
+                    const displayValues = headers.slice(0, 3).map(h => item[h]).filter(v => v !== '');
+                    summary.textContent = `Row ${item._rowNumber}: ${displayValues.join(' - ')}`;
+
+                    const details = document.createElement('div');
+                    details.className = 'selected-item-details';
+                    details.textContent = headers.map(h => `${h}: ${item[h]}`).join(' | ');
+
+                    content.appendChild(summary);
+                    content.appendChild(details);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.onclick = () => deleteSelectedItemByRowNumber(item._rowNumber);
+
+                    itemDiv.appendChild(content);
+                    itemDiv.appendChild(deleteBtn);
+                    roomDiv.appendChild(itemDiv);
+                });
+
+                selectedItemsList.appendChild(roomDiv);
+            });
+        }
+
+        function deleteSelectedItemByRowNumber(rowNumber) {
+            const idx = selectedItems.findIndex(it => it._rowNumber === rowNumber);
+            if (idx !== -1) {
+                selectedItems.splice(idx, 1);
+                displaySelectedItems();
+            }
+        }
+    </script>
