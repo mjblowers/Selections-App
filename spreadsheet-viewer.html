@@ -340,6 +340,16 @@
                 <option value="Oakley">Oakley</option>
                 <option value="MGM Grand">MGM Grand</option>
             </select>
+
+            <div class="spec-block" style="margin-left:12px;">
+                <label style="font-weight:600; margin-bottom:6px;">Beds / Baths</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="bedsInput" type="number" min="0" placeholder="Beds" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
+                    <input id="bathsInput" type="number" min="0" placeholder="Baths" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
+                    <button id="setBedsBtn" class="file-btn" style="padding:8px 10px;font-size:13px;">Set beds/baths</button>
+                    <button id="editBedsBtn" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;">Edit beds/baths</button>
+                </div>
+            </div>
         </div>
 
         <div class="selector-section" id="selectorSection">
@@ -369,9 +379,14 @@
     </div>
 
     <script>
-        const rooms = [
-            "Master", "Living", "Dining", "Bedroom 1", "Bedroom 2", "Office", "Garage", "Dude Cave", "She Shed"
+        // base rooms (static) and dynamic bedroom/bathroom slots
+        const baseRooms = [
+            "Master", "Living", "Dining", "Office", "Garage", "Dude Cave", "She Shed"
         ];
+        let dynamicBedrooms = [];
+        let dynamicBaths = [];
+        // `rooms` will be built from baseRooms + dynamicBedrooms + dynamicBaths
+        let rooms = [...baseRooms];
 
         let fileMode = 'scratch'; // 'scratch' or 'existing'
         let spreadsheetData = [];
@@ -390,6 +405,11 @@
         const confirmHouseBtn = document.getElementById('confirmHouseBtn');
         const editHouseBtn = document.getElementById('editHouseBtn');
         const floorPlanSelect = document.getElementById('floorPlanSelect');
+        // Beds/Baths inputs (from DOM)
+        const bedsInput = document.getElementById('bedsInput');
+        const bathsInput = document.getElementById('bathsInput');
+        const setBedsBtn = document.getElementById('setBedsBtn');
+        const editBedsBtn = document.getElementById('editBedsBtn');
 
         const selectorSection = document.getElementById('selectorSection');
         const rowSelect = document.getElementById('rowSelect');
@@ -422,6 +442,8 @@
         assignBtn.addEventListener('click', handleAssignToRoom);
         confirmHouseBtn.addEventListener('click', handleConfirmHouse);
         editHouseBtn.addEventListener('click', handleEditHouse);
+        setBedsBtn.addEventListener('click', handleSetBedsBaths);
+        editBedsBtn.addEventListener('click', handleEditBedsBaths);
         exportBtn.addEventListener('click', exportToExcel);
 
         function handleConfirmHouse() {
@@ -512,6 +534,42 @@
             };
             reader.readAsArrayBuffer(file);
 
+        }
+        
+        function updateRoomsArray() {
+            rooms = [...baseRooms, ...dynamicBedrooms, ...dynamicBaths];
+            populateRoomDropdown();
+            // ensure display updates to show empty room sections if needed
+            displaySelectedItems();
+        }
+
+        function handleSetBedsBaths() {
+            const beds = parseInt(bedsInput.value, 10);
+            const baths = parseInt(bathsInput.value, 10);
+            if (Number.isNaN(beds) || beds < 0 || Number.isNaN(baths) || baths < 0) {
+                errorDiv.textContent = 'Please enter valid non-negative numbers for beds and baths.';
+                return;
+            }
+            errorDiv.textContent = '';
+
+            dynamicBedrooms = Array.from({ length: beds }, (_, i) => `Bedroom ${i + 1}`);
+            dynamicBaths = Array.from({ length: baths }, (_, i) => `Bath ${i + 1}`);
+
+            // lock inputs and toggle buttons
+            bedsInput.disabled = true;
+            bathsInput.disabled = true;
+            setBedsBtn.style.display = 'none';
+            editBedsBtn.style.display = 'inline-block';
+
+            updateRoomsArray();
+        }
+
+        function handleEditBedsBaths() {
+            bedsInput.disabled = false;
+            bathsInput.disabled = false;
+            setBedsBtn.style.display = 'inline-block';
+            editBedsBtn.style.display = 'none';
+            bedsInput.focus();
         }
         function exportToExcel() {
   if (!selectedItems || selectedItems.length === 0) {
@@ -684,11 +742,6 @@
         function displaySelectedItems() {
             exportBtn.disabled = selectedItems.length === 0
 
-            if (selectedItems.length === 0) {
-                selectedItemsSection.classList.remove('active');
-                selectedItemsList.innerHTML = '';
-                return;
-            }
             selectedItemsSection.classList.add('active');
             selectedItemsList.innerHTML = '';
 
@@ -703,7 +756,6 @@
 
             Object.keys(grouped).forEach(roomName => {
                 const items = grouped[roomName];
-                if (items.length === 0) return;
                 const roomDiv = document.createElement('div');
                 roomDiv.className = 'room-section';
 
@@ -712,34 +764,43 @@
                 title.textContent = roomName;
                 roomDiv.appendChild(title);
 
-                items.forEach(({ item }) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'selected-item';
+                if (!items || items.length === 0) {
+                    const emptyNote = document.createElement('div');
+                    emptyNote.style.color = '#888';
+                    emptyNote.style.fontSize = '13px';
+                    emptyNote.style.padding = '8px 0';
+                    emptyNote.textContent = 'No items yet.';
+                    roomDiv.appendChild(emptyNote);
+                } else {
+                    items.forEach(({ item }) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'selected-item';
 
-                    const content = document.createElement('div');
-                    content.className = 'selected-item-content';
+                        const content = document.createElement('div');
+                        content.className = 'selected-item-content';
 
-                    const summary = document.createElement('div');
-                    summary.className = 'selected-item-summary';
-                    const displayValues = headers.slice(0, 3).map(h => item[h]).filter(v => v !== '');
-                    summary.textContent = `Row ${item._rowNumber}: ${displayValues.join(' - ')}`;
+                        const summary = document.createElement('div');
+                        summary.className = 'selected-item-summary';
+                        const displayValues = headers.slice(0, 3).map(h => item[h]).filter(v => v !== '');
+                        summary.textContent = `Row ${item._rowNumber}: ${displayValues.join(' - ')}`;
 
-                    const details = document.createElement('div');
-                    details.className = 'selected-item-details';
-                    details.textContent = headers.map(h => `${h}: ${item[h]}`).join(' | ');
+                        const details = document.createElement('div');
+                        details.className = 'selected-item-details';
+                        details.textContent = headers.map(h => `${h}: ${item[h]}`).join(' | ');
 
-                    content.appendChild(summary);
-                    content.appendChild(details);
+                        content.appendChild(summary);
+                        content.appendChild(details);
 
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'delete-btn';
-                    deleteBtn.textContent = 'Delete';
-                    deleteBtn.onclick = () => deleteSelectedItemByRowNumber(item._rowNumber);
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.textContent = 'Delete';
+                        deleteBtn.onclick = () => deleteSelectedItemByRowNumber(item._rowNumber);
 
-                    itemDiv.appendChild(content);
-                    itemDiv.appendChild(deleteBtn);
-                    roomDiv.appendChild(itemDiv);
-                });
+                        itemDiv.appendChild(content);
+                        itemDiv.appendChild(deleteBtn);
+                        roomDiv.appendChild(itemDiv);
+                    });
+                }
 
                 selectedItemsList.appendChild(roomDiv);
             });
