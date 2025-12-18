@@ -838,125 +838,162 @@
             bedsInput.focus();
         }
         function exportToExcel() {
-  if (!selectedItems || selectedItems.length === 0) {
-    errorDiv.textContent = 'Nothing to export.';
-    return;
-  }
+            if (!selectedItems || selectedItems.length === 0) {
+                errorDiv.textContent = 'Nothing to export.';
+                return;
+            }
 
-    // Determine data headers (fall back to headers captured from file)
-    const dataHeaders = (headers && headers.length)
-        ? headers.slice()
-        : Array.from(new Set(selectedItems.flatMap(it => Object.keys(it))))
-                .filter(k => k !== 'room' && k !== '_rowNumber' && k !== 'subsection');
+            // Determine data headers (fall back to headers captured from file)
+            const dataHeaders = (headers && headers.length)
+                ? headers.slice()
+                : Array.from(new Set(selectedItems.flatMap(it => Object.keys(it))))
+                    .filter(k => k !== 'room' && k !== '_rowNumber' && k !== 'subsection');
 
-    // Columns for export (no Subsection column — subsections will be row headers)
-    const selectionCols = ['Room', '_rowNumber', ...dataHeaders];
+            // Columns for export (no Subsection column — subsections will be row headers)
+            const selectionCols = ['Room', '_rowNumber', ...dataHeaders];
 
-  const wb = XLSX.utils.book_new();
+            const house = (houseNameInput && houseNameInput.value) ? houseNameInput.value : '';
+            const floor = (floorPlanSelect && floorPlanSelect.value) ? floorPlanSelect.value : '';
+            const spec = (document.getElementById('specSelect') && document.getElementById('specSelect').value) ? document.getElementById('specSelect').value : '';
 
-  // Summary sheet
-  const house = (houseNameInput && houseNameInput.value) ? houseNameInput.value : '';
-  const floor = (floorPlanSelect && floorPlanSelect.value) ? floorPlanSelect.value : '';
-  const spec = (document.getElementById('specSelect') && document.getElementById('specSelect').value) ? document.getElementById('specSelect').value : '';
-  const summary = [
-    ['House Name', house],
-    ['Floor Plan', floor],
-    ['Spec', spec],
-    ['Exported At', new Date().toLocaleString()]
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary');
+            const grouped = {};
+            rooms.forEach(r => grouped[r] = []);
+            grouped['Unassigned'] = [];
+            selectedItems.forEach(it => {
+                const key = it.room && grouped[it.room] ? it.room : 'Unassigned';
+                grouped[key].push(it);
+            });
 
-  // All selections sheet
-    const aoaAll = [selectionCols];
-    selectedItems.forEach(item => {
-        const row = selectionCols.map(col => {
-            if (col === 'Room') return item.room || '';
-            if (col === '_rowNumber') return item._rowNumber || '';
-            return item[col] !== undefined ? item[col] : '';
-        });
-        aoaAll.push(row);
-    });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaAll), 'All Selections');
+            const sanitizeSheetName = (name) => {
+                const safe = String(name).replace(/[\/\\\?\*\[\]:]/g, '').slice(0, 31) || 'Sheet';
+                return safe;
+            };
 
-  // Group by room and create a sheet per room (and Unassigned)
-  const grouped = {};
-  rooms.forEach(r => grouped[r] = []);
-  grouped['Unassigned'] = [];
+            if (window.ExcelJS && window.saveAs) {
+                const workbook = new ExcelJS.Workbook();
+                workbook.creator = 'Selection App';
+                workbook.created = new Date();
 
-  selectedItems.forEach(it => {
-    const key = it.room && grouped[it.room] ? it.room : 'Unassigned';
-    grouped[key].push(it);
-  });
+                // Summary
+                const summaryWs = workbook.addWorksheet('Summary');
+                summaryWs.addRow(['House Name', house]);
+                summaryWs.addRow(['Floor Plan', floor]);
+                summaryWs.addRow(['Spec', spec]);
+                summaryWs.addRow(['Exported At', new Date().toLocaleString()]);
 
-  const sanitizeSheetName = (name) => {
-    const safe = String(name).replace(/[\/\\\?\*\[\]:]/g, '').slice(0, 31) || 'Sheet';
-    return safe;
-  };
-
-    Object.keys(grouped).forEach(roomName => {
-        const items = grouped[roomName];
-        if (!items || items.length === 0) return;
-
-        const aoa = [];
-        const subsectionTitleRows = [];
-
-        // Group items by subsection within the room
-        const subsectionGroups = {};
-        items.forEach(it => {
-            const ss = it.subsection || 'Subsection 1';
-            if (!subsectionGroups[ss]) subsectionGroups[ss] = [];
-            subsectionGroups[ss].push(it);
-        });
-
-        // For each subsection, add a subsection title row, then column headers, then its items
-        Object.keys(subsectionGroups).sort().forEach(subsection => {
-            // Subsection title row (single cell)
-            subsectionTitleRows.push(aoa.length);
-            aoa.push([subsection]);
-            // Column header for this subsection block
-            aoa.push(selectionCols);
-            subsectionGroups[subsection].forEach(item => {
-                const row = selectionCols.map(col => {
-                    if (col === 'Room') return item.room || '';
-                    if (col === '_rowNumber') return item._rowNumber || '';
-                    return item[col] !== undefined ? item[col] : '';
+                // All selections
+                const allWs = workbook.addWorksheet('All Selections');
+                const allHeaderRow = allWs.addRow(selectionCols);
+                try { allHeaderRow.eachCell(cell => { cell.font = { bold: true }; }); } catch (e) {}
+                selectedItems.forEach(item => {
+                    const row = selectionCols.map(col => {
+                        if (col === 'Room') return item.room || '';
+                        if (col === '_rowNumber') return item._rowNumber || '';
+                        return item[col] !== undefined ? item[col] : '';
+                    });
+                    allWs.addRow(row);
                 });
-                aoa.push(row);
-            });
-            // add an empty spacer row after each subsection for readability
-            aoa.push([]);
-        });
-
-        const sheetName = sanitizeSheetName(roomName);
-        const sheet = XLSX.utils.aoa_to_sheet(aoa);
-
-        // Merge subsection title rows across all used columns for visual emphasis
-        try {
-            const lastCol = selectionCols.length - 1;
-            sheet['!merges'] = sheet['!merges'] || [];
-            subsectionTitleRows.forEach(rIdx => {
-                sheet['!merges'].push({ s: { r: rIdx, c: 0 }, e: { r: rIdx, c: lastCol } });
-                // Also attempt to set a simple text style; may be ignored by community writer
-                const cellRef = XLSX.utils.encode_cell({ c: 0, r: rIdx });
-                const cell = sheet[cellRef] || (sheet[cellRef] = { t: 's', v: '' });
+                // Autosize columns for All Selections
                 try {
-                    cell.s = { font: { bold: true } };
+                    const autosize = (ws, colCount) => {
+                        for (let i = 1; i <= colCount; i++) {
+                            const col = ws.getColumn(i);
+                            let max = 10;
+                            col.eachCell({ includeEmpty: true }, (cell) => {
+                                const v = cell.value;
+                                const s = v === null || v === undefined ? '' : String(v);
+                                max = Math.max(max, s.length);
+                            });
+                            col.width = Math.min(Math.max(max + 2, 10), 60);
+                        }
+                    };
+                    autosize(allWs, selectionCols.length);
                 } catch (e) {
-                    // ignore styling errors
+                    console.warn('Autosize failed for All Selections:', e);
                 }
-            });
-        } catch (e) {
-            console.warn('Could not apply merges/styles to export:', e);
+
+                // Per-room sheets with subsections
+                Object.keys(grouped).forEach(roomName => {
+                    const items = grouped[roomName];
+                    if (!items || items.length === 0) return;
+                    const sheetName = sanitizeSheetName(roomName);
+                    const ws = workbook.addWorksheet(sheetName);
+
+                    // Group by subsection
+                    const subsectionGroups = {};
+                    items.forEach(it => {
+                        const ss = it.subsection || 'Subsection 1';
+                        if (!subsectionGroups[ss]) subsectionGroups[ss] = [];
+                        subsectionGroups[ss].push(it);
+                    });
+
+                    Object.keys(subsectionGroups).sort().forEach(subsection => {
+                        // Title row
+                        const titleRow = ws.addRow([subsection]);
+                        // Merge across columns
+                        const lastCol = selectionCols.length;
+                        try { ws.mergeCells(titleRow.number, 1, titleRow.number, lastCol); } catch (e) {}
+                        // Style title
+                        try {
+                            const titleCell = ws.getCell(titleRow.number, 1);
+                            titleCell.font = { bold: true };
+                            titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6F6D5' } };
+                            titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+                        } catch (e) {}
+
+                        // Header row
+                        const hdr = ws.addRow(selectionCols);
+                        try { hdr.eachCell(cell => { cell.font = { bold: true }; }); } catch (e) {}
+
+                        // Items
+                        subsectionGroups[subsection].forEach(item => {
+                            const row = selectionCols.map(col => {
+                                if (col === 'Room') return item.room || '';
+                                if (col === '_rowNumber') return item._rowNumber || '';
+                                return item[col] !== undefined ? item[col] : '';
+                            });
+                            ws.addRow(row);
+                        });
+
+                        // spacer
+                        ws.addRow([]);
+                    });
+
+                    // Autosize columns for this room sheet
+                    try {
+                        const autosize = (ws2, colCount) => {
+                            for (let i = 1; i <= colCount; i++) {
+                                const col = ws2.getColumn(i);
+                                let max = 10;
+                                col.eachCell({ includeEmpty: true }, (cell) => {
+                                    const v = cell.value;
+                                    const s = v === null || v === undefined ? '' : String(v);
+                                    max = Math.max(max, s.length);
+                                });
+                                col.width = Math.min(Math.max(max + 2, 10), 60);
+                            }
+                        };
+                        autosize(ws, selectionCols.length);
+                    } catch (e) {
+                        console.warn('Autosize failed for room sheet', roomName, e);
+                    }
+                });
+
+                const fileNameSafe = (house || 'Selections').replace(/[\/\\:?<>|*"]/g, '');
+                const fileName = `${fileNameSafe} - ${floor || 'Plan'} - selections.xlsx`;
+                workbook.xlsx.writeBuffer().then(buffer => {
+                    saveAs(new Blob([buffer]), fileName);
+                }).catch(err => {
+                    console.error('ExcelJS write error', err);
+                    errorDiv.textContent = 'Error generating Excel file.';
+                });
+
+                return;
+            }
+
+            // Fallback: if ExcelJS not available, notify user
+            errorDiv.textContent = 'ExcelJS or FileSaver not available; cannot perform styled export.';
         }
-
-        XLSX.utils.book_append_sheet(wb, sheet, sheetName);
-    });
-
-  // Build file name and write
-  const fileNameSafe = (house || 'Selections').replace(/[\/\\:?<>|*"]/g, '');
-  const fileName = `${fileNameSafe} - ${floor || 'Plan'} - selections.xlsx`;
-  XLSX.writeFile(wb, fileName);
-}
 
         function populateDropdown() {
             rowSelect.innerHTML = '<option value="">-- Choose a row --</option>';
@@ -1289,6 +1326,8 @@
             }
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
