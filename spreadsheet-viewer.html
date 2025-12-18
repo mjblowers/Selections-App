@@ -843,13 +843,14 @@
     return;
   }
 
-  // Determine data headers (fall back to headers captured from file)
-  const dataHeaders = (headers && headers.length)
-    ? headers.slice()
-    : Array.from(new Set(selectedItems.flatMap(it => Object.keys(it))))
-        .filter(k => k !== 'room' && k !== '_rowNumber');
+    // Determine data headers (fall back to headers captured from file)
+    const dataHeaders = (headers && headers.length)
+        ? headers.slice()
+        : Array.from(new Set(selectedItems.flatMap(it => Object.keys(it))))
+                .filter(k => k !== 'room' && k !== '_rowNumber' && k !== 'subsection');
 
-  const selectionCols = ['Room', '_rowNumber', ...dataHeaders];
+    // Columns for export (no Subsection column — subsections will be row headers)
+    const selectionCols = ['Room', '_rowNumber', ...dataHeaders];
 
   const wb = XLSX.utils.book_new();
 
@@ -866,15 +867,15 @@
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary');
 
   // All selections sheet
-  const aoaAll = [selectionCols];
-  selectedItems.forEach(item => {
-    const row = selectionCols.map(col => {
-      if (col === 'Room') return item.room || '';
-      if (col === '_rowNumber') return item._rowNumber || '';
-      return item[col] !== undefined ? item[col] : '';
+    const aoaAll = [selectionCols];
+    selectedItems.forEach(item => {
+        const row = selectionCols.map(col => {
+            if (col === 'Room') return item.room || '';
+            if (col === '_rowNumber') return item._rowNumber || '';
+            return item[col] !== undefined ? item[col] : '';
+        });
+        aoaAll.push(row);
     });
-    aoaAll.push(row);
-  });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaAll), 'All Selections');
 
   // Group by room and create a sheet per room (and Unassigned)
@@ -892,23 +893,64 @@
     return safe;
   };
 
-  Object.keys(grouped).forEach(roomName => {
-    const items = grouped[roomName];
-    if (!items || items.length === 0) return;
+    Object.keys(grouped).forEach(roomName => {
+        const items = grouped[roomName];
+        if (!items || items.length === 0) return;
 
-    const aoa = [selectionCols];
-    items.forEach(item => {
-      const row = selectionCols.map(col => {
-        if (col === 'Room') return item.room || '';
-        if (col === '_rowNumber') return item._rowNumber || '';
-        return item[col] !== undefined ? item[col] : '';
-      });
-      aoa.push(row);
+        const aoa = [];
+        const subsectionTitleRows = [];
+
+        // Group items by subsection within the room
+        const subsectionGroups = {};
+        items.forEach(it => {
+            const ss = it.subsection || 'Subsection 1';
+            if (!subsectionGroups[ss]) subsectionGroups[ss] = [];
+            subsectionGroups[ss].push(it);
+        });
+
+        // For each subsection, add a subsection title row, then column headers, then its items
+        Object.keys(subsectionGroups).sort().forEach(subsection => {
+            // Subsection title row (single cell)
+            subsectionTitleRows.push(aoa.length);
+            aoa.push([subsection]);
+            // Column header for this subsection block
+            aoa.push(selectionCols);
+            subsectionGroups[subsection].forEach(item => {
+                const row = selectionCols.map(col => {
+                    if (col === 'Room') return item.room || '';
+                    if (col === '_rowNumber') return item._rowNumber || '';
+                    return item[col] !== undefined ? item[col] : '';
+                });
+                aoa.push(row);
+            });
+            // add an empty spacer row after each subsection for readability
+            aoa.push([]);
+        });
+
+        const sheetName = sanitizeSheetName(roomName);
+        const sheet = XLSX.utils.aoa_to_sheet(aoa);
+
+        // Merge subsection title rows across all used columns for visual emphasis
+        try {
+            const lastCol = selectionCols.length - 1;
+            sheet['!merges'] = sheet['!merges'] || [];
+            subsectionTitleRows.forEach(rIdx => {
+                sheet['!merges'].push({ s: { r: rIdx, c: 0 }, e: { r: rIdx, c: lastCol } });
+                // Also attempt to set a simple text style; may be ignored by community writer
+                const cellRef = XLSX.utils.encode_cell({ c: 0, r: rIdx });
+                const cell = sheet[cellRef] || (sheet[cellRef] = { t: 's', v: '' });
+                try {
+                    cell.s = { font: { bold: true } };
+                } catch (e) {
+                    // ignore styling errors
+                }
+            });
+        } catch (e) {
+            console.warn('Could not apply merges/styles to export:', e);
+        }
+
+        XLSX.utils.book_append_sheet(wb, sheet, sheetName);
     });
-
-    const sheetName = sanitizeSheetName(roomName);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName);
-  });
 
   // Build file name and write
   const fileNameSafe = (house || 'Selections').replace(/[\/\\:?<>|*"]/g, '');
