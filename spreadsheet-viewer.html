@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spreadsheet Row Selector</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
         * {
             margin: 0;
@@ -140,6 +141,25 @@
             gap: 8px;
             min-width: 180px;
         }
+        .toggle-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .toggle-btn {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .toggle-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #5568d3;
+        }
 
         .selector-section {
             display: none;
@@ -246,6 +266,30 @@
             margin-bottom: 18px;
         }
 
+        /* Tabs for rooms */
+        .room-tabs {
+            display: flex;
+            gap: 6px;
+            margin-left: 12px;
+            flex-wrap: wrap;
+        }
+        .room-tab-btn {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .room-tab-btn.active {
+            background: #667eea;
+            color: #fff;
+            border-color: #5568d3;
+        }
+        .room-tab-content {
+            margin-top: 12px;
+        }
+
         .room-title {
             font-weight: 700;
             color: #333;
@@ -325,6 +369,7 @@
             <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
             <div class="file-name" id="fileName"></div>
             <div class="error" id="error"></div>
+            <div id="debugOutput" style="margin-top:8px;background:#f3f4f6;padding:8px;border-radius:6px;font-size:12px;color:#333;max-height:120px;overflow:auto;display:none;"></div>
         </div>
 
         <!-- House name + Floor Plan row -->
@@ -346,17 +391,29 @@
                 <div style="display:flex; gap:8px; align-items:center;">
                     <input id="bedsInput" type="number" min="0" placeholder="Beds" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
                     <input id="bathsInput" type="number" min="0" placeholder="Baths" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
-                    <button id="setBedsBtn" class="file-btn" style="padding:8px 10px;font-size:13px;">Set beds/baths</button>
-                    <button id="editBedsBtn" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;">Edit beds/baths</button>
+                    <button id="setBedsBtn" class="file-btn" style="padding:8px 10px;font-size:13px;">Set House Layout</button>
+                    <button id="editBedsBtn" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;">Edit House Layout</button>
+                </div>
+                <label style="font-weight:600; margin-top:8px;">Extra Rooms (toggle)</label>
+                <div class="toggle-group" id="extraRoomsGroup">
+                    <button type="button" class="toggle-btn" data-room="Office">Office</button>
+                    <button type="button" class="toggle-btn" data-room="Den">Den</button>
+                    <button type="button" class="toggle-btn" data-room="Living">Living</button>
+                    <button type="button" class="toggle-btn" data-room="Dining">Dining</button>
+                    <button type="button" class="toggle-btn" data-room="Family">Family</button>
+                    <button type="button" class="toggle-btn" data-room="Garage">Garage</button>
                 </div>
             </div>
         </div>
 
         <div class="selector-section" id="selectorSection">
             <label for="rowSelect">Select a Row:</label>
-            <select id="rowSelect">
-                <option value="">-- Choose a row --</option>
-            </select>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <select id="rowSelect">
+                    <option value="">-- Choose a row --</option>
+                </select>
+                <button id="confirmSelectionBtn" class="assign-btn" style="background:#5568d3;" onclick="handleAssignToCurrentRoom(); return false;">Confirm Selection</button>
+            </div>
         </div>
 
         <div class="row-details" id="rowDetails">
@@ -368,21 +425,25 @@
                     <option value="">-- Choose a room --</option>
                 </select>
                 <button id="assignBtn" class="assign-btn">Assign to Room</button>
+                <button id="assignCurrentBtn" class="assign-btn" style="background:#5568d3; margin-left:6px;">Add to Current Room</button>
             </div>
         </div>
 
         <div class="selected-items" id="selectedItems">
             <h3>Selected Items</h3>
-            <button id="exportBtn" class="file-btn" style="margin-left:12px;" disabled>Export to Excel</button>
-            <div id="selectedItemsList"></div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button id="exportBtn" class="file-btn" style="margin-left:12px;" disabled>Export to Excel</button>
+                <div id="roomTabs" class="room-tabs" aria-label="Room Tabs"></div>
+            </div>
+            <div id="roomTabContent" class="room-tab-content"></div>
         </div>
     </div>
 
     <script>
         // base rooms (static) and dynamic bedroom/bathroom slots
-        const baseRooms = [
-            "Master", "Living", "Dining", "Office", "Garage", "Dude Cave", "She Shed"
-        ];
+        // NOTE: remove hard-coded miscellaneous rooms so only generated bedrooms, baths,
+        // and user-selected extra rooms (toggle buttons) populate the room list.
+        const baseRooms = [];
         let dynamicBedrooms = [];
         let dynamicBaths = [];
         // `rooms` will be built from baseRooms + dynamicBedrooms + dynamicBaths
@@ -417,10 +478,28 @@
         const detailsContent = document.getElementById('detailsContent');
         const roomSelect = document.getElementById('roomSelect');
         const assignBtn = document.getElementById('assignBtn');
+        const assignCurrentBtn = document.getElementById('assignCurrentBtn');
+        const confirmSelectionBtn = document.getElementById('confirmSelectionBtn');
         const selectedItemsSection = document.getElementById('selectedItems');
         const selectedItemsList = document.getElementById('selectedItemsList');
 
         const exportBtn = document.getElementById('exportBtn');
+
+        // Debug helper (defined before populateRoomDropdown to avoid init ordering issues)
+        const debugOutput = document.getElementById('debugOutput');
+        function debugLog(msg) {
+            try { console.log('[DEBUG]', msg); } catch (e) {}
+            if (!debugOutput) return;
+            debugOutput.style.display = 'block';
+            const time = new Date().toLocaleTimeString();
+            const el = document.createElement('div');
+            el.textContent = `[${time}] ${msg}`;
+            debugOutput.appendChild(el);
+            // keep only latest 2000 chars
+            if (debugOutput.textContent.length > 2000) {
+                debugOutput.removeChild(debugOutput.firstChild);
+            }
+        }
 
         // Setup initial room dropdown
         populateRoomDropdown();
@@ -440,10 +519,22 @@
 
         rowSelect.addEventListener('change', handleRowSelect);
         assignBtn.addEventListener('click', handleAssignToRoom);
+        if (assignCurrentBtn) assignCurrentBtn.addEventListener('click', handleAssignToCurrentRoom);
+        if (confirmSelectionBtn) {
+            confirmSelectionBtn.addEventListener('click', handleAssignToCurrentRoom);
+        }
         confirmHouseBtn.addEventListener('click', handleConfirmHouse);
         editHouseBtn.addEventListener('click', handleEditHouse);
         setBedsBtn.addEventListener('click', handleSetBedsBaths);
         editBedsBtn.addEventListener('click', handleEditBedsBaths);
+        // extra room toggles
+        document.addEventListener('click', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('toggle-btn')) {
+                const btn = e.target;
+                if (btn.disabled) return;
+                btn.classList.toggle('active');
+            }
+        });
         exportBtn.addEventListener('click', exportToExcel);
 
         function handleConfirmHouse() {
@@ -537,16 +628,24 @@
         }
         
         function updateRoomsArray() {
-            rooms = [...baseRooms, ...dynamicBedrooms, ...dynamicBaths];
+            // merge while avoiding duplicates and include any selected extra rooms
+            const set = new Set();
+            baseRooms.forEach(r => set.add(r));
+            dynamicBedrooms.forEach(r => set.add(r));
+            dynamicBaths.forEach(r => set.add(r));
+            if (window.selectedExtraRooms && Array.isArray(window.selectedExtraRooms)) {
+                window.selectedExtraRooms.forEach(r => set.add(r));
+            }
+            rooms = Array.from(set);
             populateRoomDropdown();
             // ensure display updates to show empty room sections if needed
             displaySelectedItems();
         }
 
         function handleSetBedsBaths() {
-            const beds = parseInt(bedsInput.value, 10);
-            const baths = parseInt(bathsInput.value, 10);
-            if (Number.isNaN(beds) || beds < 0 || Number.isNaN(baths) || baths < 0) {
+            const beds = parseInt(bedsInput.value, 10) || 0;
+            const baths = parseInt(bathsInput.value, 10) || 0;
+            if (beds < 0 || baths < 0) {
                 errorDiv.textContent = 'Please enter valid non-negative numbers for beds and baths.';
                 return;
             }
@@ -555,9 +654,16 @@
             dynamicBedrooms = Array.from({ length: beds }, (_, i) => `Bedroom ${i + 1}`);
             dynamicBaths = Array.from({ length: baths }, (_, i) => `Bath ${i + 1}`);
 
+            // collect selected extra rooms from toggle buttons
+            const extras = Array.from(document.querySelectorAll('#extraRoomsGroup .toggle-btn'))
+                .filter(b => b.classList.contains('active'))
+                .map(b => b.getAttribute('data-room'));
+            window.selectedExtraRooms = extras;
+
             // lock inputs and toggle buttons
             bedsInput.disabled = true;
             bathsInput.disabled = true;
+            document.querySelectorAll('#extraRoomsGroup .toggle-btn').forEach(b => b.disabled = true);
             setBedsBtn.style.display = 'none';
             editBedsBtn.style.display = 'inline-block';
 
@@ -567,6 +673,7 @@
         function handleEditBedsBaths() {
             bedsInput.disabled = false;
             bathsInput.disabled = false;
+            document.querySelectorAll('#extraRoomsGroup .toggle-btn').forEach(b => b.disabled = false);
             setBedsBtn.style.display = 'inline-block';
             editBedsBtn.style.display = 'none';
             bedsInput.focus();
@@ -669,6 +776,22 @@
                 opt.textContent = r;
                 roomSelect.appendChild(opt);
             });
+            // If Select2 is active, refresh it to pick up the new options
+            try {
+                if (window.jQuery && jQuery.fn && jQuery.fn.select2) {
+                    const $rs = jQuery(roomSelect);
+                    if ($rs.data('select2')) {
+                        $rs.select2('destroy');
+                    }
+                    $rs.select2({
+                        placeholder: 'Search for a room...',
+                        allowClear: true,
+                        width: '100%'
+                    });
+                }
+            } catch (err) {
+                // ignore if select2 not present yet
+            }
         }
 
         function handleRowSelect(e) {
@@ -676,11 +799,14 @@
             if (selectedIndex === '') {
                 rowDetails.classList.remove('active');
                 currentSelectedRow = null;
+                if (confirmSelectionBtn) confirmSelectionBtn.disabled = true;
                 return;
             }
             const selectedRow = spreadsheetData[selectedIndex];
             currentSelectedRow = selectedRow;
             displayRowDetails(selectedRow);
+
+            if (confirmSelectionBtn) confirmSelectionBtn.disabled = false;
 
             const already = selectedItems.find(it => it._rowNumber === selectedRow._rowNumber);
             if (already) {
@@ -712,38 +838,112 @@
         }
 
         function handleAssignToRoom() {
+            try {
+                if (!currentSelectedRow) {
+                    errorDiv.textContent = 'No row selected to assign.';
+                    return;
+                }
+                const selectedRoom = roomSelect.value;
+                if (!selectedRoom) {
+                    errorDiv.textContent = 'Please choose a room.';
+                    return;
+                }
+                errorDiv.textContent = '';
+
+                const existsIndex = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber);
+                if (existsIndex !== -1) {
+                    selectedItems[existsIndex].room = selectedRoom;
+                } else {
+                    const itemToAdd = { ...currentSelectedRow, room: selectedRoom };
+                    selectedItems.push(itemToAdd);
+                }
+
+                displaySelectedItems();
+
+                currentSelectedRow = null;
+                rowDetails.classList.remove('active');
+                rowSelect.value = '';
+                try {
+                    if (window.jQuery && jQuery.fn && jQuery.fn.select2) {
+                        jQuery(rowSelect).val(null).trigger('change');
+                    }
+                } catch (e) {
+                    // ignore
+                }
+                roomSelect.value = '';
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = 'Error during assign: ' + (err && err.message ? err.message : err);
+            }
+        }
+
+        function handleAssignToCurrentRoom() {
+            try {
+            // Ensure we have a selected row; if not, try to read it from the select element (works with Select2)
             if (!currentSelectedRow) {
-                errorDiv.textContent = 'No row selected to assign.';
+                const sel = rowSelect.value;
+                if (sel === '' || sel === null || sel === undefined) {
+                    errorDiv.textContent = 'No row selected to assign.';
+                    setTimeout(() => { if (errorDiv.textContent === 'No row selected to assign.') errorDiv.textContent = ''; }, 2000);
+                    return;
+                }
+                currentSelectedRow = spreadsheetData[sel];
+            }
+            // visible feedback: start
+            errorDiv.textContent = `Assigning Row ${currentSelectedRow._rowNumber}...`;
+            // choose target room: prefer active tab, otherwise default to first defined room
+            let targetRoom = window.activeRoomTab || (rooms && rooms.length ? rooms[0] : null);
+            if (!targetRoom) {
+                errorDiv.textContent = 'No room available to assign to.';
                 return;
             }
-            const selectedRoom = roomSelect.value;
-            if (!selectedRoom) {
-                errorDiv.textContent = 'Please choose a room.';
-                return;
+            // don't allow assigning to Unassigned via this button; pick first non-Unassigned if needed
+            if (targetRoom === 'Unassigned') {
+                const firstRoom = (rooms && rooms.length) ? rooms.find(r => r !== 'Unassigned') : null;
+                if (firstRoom) targetRoom = firstRoom;
+                else {
+                    errorDiv.textContent = 'No room available to assign to.';
+                    return;
+                }
             }
             errorDiv.textContent = '';
 
             const existsIndex = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber);
             if (existsIndex !== -1) {
-                selectedItems[existsIndex].room = selectedRoom;
+                selectedItems[existsIndex].room = targetRoom;
             } else {
-                const itemToAdd = { ...currentSelectedRow, room: selectedRoom };
+                const itemToAdd = { ...currentSelectedRow, room: targetRoom };
                 selectedItems.push(itemToAdd);
             }
 
+            // ensure the assigned room becomes the active tab
+            window.activeRoomTab = targetRoom;
             displaySelectedItems();
+
+            // visible feedback: success
+            errorDiv.textContent = `Added Row ${currentSelectedRow._rowNumber} → ${targetRoom}`;
+            setTimeout(() => { if (errorDiv.textContent.startsWith('Added Row')) errorDiv.textContent = ''; }, 2000);
 
             currentSelectedRow = null;
             rowDetails.classList.remove('active');
-            rowSelect.value = '';
-            roomSelect.value = '';
+            // don't clear rowSelect value; keep it so user can reassign to another room
+            // rowSelect.value = '';
+            // keep roomSelect as-is (user might still want to use it)
+            // don't disable the button; keep it enabled for next selection
+            } catch (err) {
+                console.error('handleAssignToCurrentRoom ERROR:', err);
+                errorDiv.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
+            }
         }
 
         function displaySelectedItems() {
-            exportBtn.disabled = selectedItems.length === 0
+            exportBtn.disabled = selectedItems.length === 0;
 
             selectedItemsSection.classList.add('active');
-            selectedItemsList.innerHTML = '';
+            const roomTabs = document.getElementById('roomTabs');
+            const roomTabContent = document.getElementById('roomTabContent');
+            roomTabs.innerHTML = '';
+            roomTabContent.innerHTML = '';
 
             const grouped = {};
             rooms.forEach(r => grouped[r] = []);
@@ -754,23 +954,42 @@
                 grouped[key].push({ item: it, originalIndex: idx });
             });
 
-            Object.keys(grouped).forEach(roomName => {
-                const items = grouped[roomName];
-                const roomDiv = document.createElement('div');
-                roomDiv.className = 'room-section';
+            const roomNames = Object.keys(grouped);
+
+            // preserve previously active tab if possible
+            if (!window.activeRoomTab || !roomNames.includes(window.activeRoomTab)) {
+                const roomWithItems = roomNames.find(r => grouped[r] && grouped[r].length > 0);
+                window.activeRoomTab = roomWithItems || roomNames[0] || 'Unassigned';
+            }
+
+            roomNames.forEach(roomName => {
+                const count = grouped[roomName] ? grouped[roomName].length : 0;
+                const btn = document.createElement('button');
+                btn.className = 'room-tab-btn';
+                btn.setAttribute('type', 'button');
+                btn.dataset.room = roomName;
+                btn.textContent = roomName + (count ? ` (${count})` : '');
+                if (roomName === window.activeRoomTab) btn.classList.add('active');
+                roomTabs.appendChild(btn);
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'room-section';
+                contentDiv.dataset.room = roomName;
+                contentDiv.style.display = roomName === window.activeRoomTab ? 'block' : 'none';
 
                 const title = document.createElement('div');
                 title.className = 'room-title';
                 title.textContent = roomName;
-                roomDiv.appendChild(title);
+                contentDiv.appendChild(title);
 
+                const items = grouped[roomName] || [];
                 if (!items || items.length === 0) {
                     const emptyNote = document.createElement('div');
                     emptyNote.style.color = '#888';
                     emptyNote.style.fontSize = '13px';
                     emptyNote.style.padding = '8px 0';
                     emptyNote.textContent = 'No items yet.';
-                    roomDiv.appendChild(emptyNote);
+                    contentDiv.appendChild(emptyNote);
                 } else {
                     items.forEach(({ item }) => {
                         const itemDiv = document.createElement('div');
@@ -798,12 +1017,28 @@
 
                         itemDiv.appendChild(content);
                         itemDiv.appendChild(deleteBtn);
-                        roomDiv.appendChild(itemDiv);
+                        contentDiv.appendChild(itemDiv);
                     });
                 }
 
-                selectedItemsList.appendChild(roomDiv);
+                roomTabContent.appendChild(contentDiv);
             });
+
+            // tab switching
+            roomTabs.onclick = function (e) {
+                const btn = e.target.closest('button.room-tab-btn');
+                if (!btn) return;
+                const newRoom = btn.dataset.room;
+                if (!newRoom) return;
+                if (newRoom === window.activeRoomTab) return;
+                // update buttons
+                Array.from(roomTabs.children).forEach(b => b.classList.toggle('active', b.dataset.room === newRoom));
+                // show/hide content
+                Array.from(roomTabContent.children).forEach(div => {
+                    div.style.display = div.dataset.room === newRoom ? 'block' : 'none';
+                });
+                window.activeRoomTab = newRoom;
+            };
         }
 
         function deleteSelectedItemByRowNumber(rowNumber) {
@@ -814,3 +1049,19 @@
             }
         }
     </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        // Initialize Select2 after jQuery and Select2 are loaded
+        $('#rowSelect').select2({
+            placeholder: 'Search for a row...',
+            allowClear: true,
+            width: '100%'
+        });
+        $('#roomSelect').select2({
+            placeholder: 'Search for a room...',
+            allowClear: true,
+            width: '100%'
+        });
+    </script>
+</body>
