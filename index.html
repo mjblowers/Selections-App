@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Selection App - Spreadsheet Organizer</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    
+    <!-- Third-party libraries -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📊 Selection App</h1>
+
+        <!-- File Upload Section -->
+        <div class="upload-section">
+            <div class="file-buttons">
+                <button id="startScratchBtn" class="file-btn">Select Data Source</button>
+                <button id="newProjectBtn" class="file-btn file-btn--danger">Clear Data</button>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
+            <div class="file-name" id="fileName"></div>
+            <div class="error" id="error"></div>
+            <div id="debugOutput" class="debug-output"></div>
+        </div>
+
+        <!-- House Configuration Section -->
+        <div class="house-row">
+            <div class="house-input">
+                <input id="houseNameInput" type="text" placeholder="Enter house name" />
+                <button id="confirmHouseBtn" class="confirm-btn">Confirm</button>
+                <button id="editHouseBtn" class="edit-btn" style="display:none;">Edit</button>
+            </div>
+            <select id="floorPlanSelect" class="floor-plan-select" aria-label="Floor Plan">
+                <option value="">-- Floor Plan --</option>
+                <option value="Olympia">Olympia</option>
+                <option value="Oakley">Oakley</option>
+                <option value="MGM Grand">MGM Grand</option>
+            </select>
+
+            <!-- Beds/Baths Configuration -->
+            <div class="spec-block">
+                <label>Beds / Baths</label>
+                <div class="spec-inputs">
+                    <input id="bedsInput" type="number" min="0" placeholder="Beds" />
+                    <input id="bathsInput" type="number" min="0" placeholder="Baths" />
+                    <button id="setBedsBtn" class="file-btn file-btn--small">Set House Layout</button>
+                    <button id="editBedsBtn" class="file-btn file-btn--secondary file-btn--small" style="display:none;">Edit House Layout</button>
+                </div>
+                
+                <!-- Extra Rooms Toggle -->
+                <label style="margin-top:8px;">Extra Rooms</label>
+                <div class="toggle-group" id="extraRoomsGroup">
+                    <button type="button" class="toggle-btn" data-room="Office">Office</button>
+                    <button type="button" class="toggle-btn" data-room="Den">Den</button>
+                    <button type="button" class="toggle-btn" data-room="Living">Living</button>
+                    <button type="button" class="toggle-btn" data-room="Dining">Dining</button>
+                    <button type="button" class="toggle-btn" data-room="Family">Family</button>
+                    <button type="button" class="toggle-btn" data-room="Garage">Garage</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row Selection Section -->
+        <div class="selector-section" id="selectorSection">
+            <label for="rowSelect">Select an Item:</label>
+            <div class="selector-controls">
+                <select id="rowSelect"></select>
+                <select id="subsectionSelect">
+                    <option value="Subsection 1">Subsection 1</option>
+                    <option value="Subsection 2">Subsection 2</option>
+                    <option value="Subsection 3">Subsection 3</option>
+                </select>
+                <button id="confirmSelectionBtn" class="assign-btn assign-btn--primary">Confirm Selection</button>
+            </div>
+        </div>
+
+        <!-- Row Details Section -->
+        <div class="row-details" id="rowDetails">
+            <h3>Row Details</h3>
+            <div id="detailsContent" class="details-content"></div>
+
+            <div class="assign-row">
+                <select id="roomSelect">
+                    <option value="">-- Choose a room --</option>
+                </select>
+                <button id="assignBtn" class="assign-btn">Assign to Room</button>
+                <button id="assignCurrentBtn" class="assign-btn assign-btn--primary">Add to Current Room</button>
+            </div>
+        </div>
+
+        <!-- Selected Items / Room Tabs Section -->
+        <div class="selected-items" id="selectedItems">
+            <h3>Selected Items by Room</h3>
+            <div class="room-tabs-container">
+                <div id="roomTabs" class="room-tabs" aria-label="Room Tabs"></div>
+            </div>
+            <div id="roomTabContent" class="room-tab-content"></div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <button id="exportBtn" class="file-btn file-btn--success" disabled>Export to Excel</button>
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="js/modules/constants.js"></script>
+    <script src="js/modules/state.js"></script>
+    <script src="js/modules/storage.js"></script>
+    <script src="js/modules/fileHandler.js"></script>
+    <script src="js/modules/roomManager.js"></script>
+    <script src="js/modules/ui.js"></script>
+    <script src="js/modules/export.js"></script>
+    <script src="js/modules/events.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- jQuery for Select2 (loaded after app) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="js/modules/select2-init.js"></script>
+</body>
+</html>
