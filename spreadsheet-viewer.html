@@ -363,8 +363,9 @@
 
         <div class="upload-section">
             <div class="file-buttons">
-                <button id="startScratchBtn" class="file-btn">Start from scratch :(</button>
-                <button id="existingSpecBtn" class="file-btn secondary">Choose existing spec</button>
+                <button id="startScratchBtn" class="file-btn">Select Data Source</button>
+                <!-- <button id="existingSpecBtn" class="file-btn secondary">Choose existing spec</button> -->
+                <button id="newProjectBtn" class="file-btn" style="background: #e74c3c;">Clear Data</button>
             </div>
             <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
             <div class="file-name" id="fileName"></div>
@@ -432,10 +433,13 @@
         <div class="selected-items" id="selectedItems">
             <h3>Selected Items</h3>
             <div style="display:flex; gap:8px; align-items:center;">
-                <button id="exportBtn" class="file-btn" style="margin-left:12px;" disabled>Export to Excel</button>
                 <div id="roomTabs" class="room-tabs" aria-label="Room Tabs"></div>
             </div>
             <div id="roomTabContent" class="room-tab-content"></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="exportBtn" class="file-btn" disabled>Export to Excel</button>
         </div>
     </div>
 
@@ -504,6 +508,9 @@
         // Setup initial room dropdown
         populateRoomDropdown();
 
+        // Load saved state from localStorage
+        loadState();
+
         // Event listeners
         startScratchBtn.addEventListener('click', () => {
             fileMode = 'scratch';
@@ -537,6 +544,147 @@
         });
         exportBtn.addEventListener('click', exportToExcel);
 
+        // localStorage functions
+        function saveState() {
+            const state = {
+                selectedItems: selectedItems,
+                dynamicBedrooms: dynamicBedrooms,
+                dynamicBaths: dynamicBaths,
+                selectedExtraRooms: window.selectedExtraRooms || [],
+                houseName: houseNameInput.value,
+                floorPlan: floorPlanSelect.value,
+                beds: bedsInput.value,
+                baths: bathsInput.value,
+                activeRoomTab: window.activeRoomTab,
+                spreadsheetData: spreadsheetData,
+                headers: headers,
+                lastFileName: document.getElementById('fileName').textContent
+            };
+            localStorage.setItem('selectionAppState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('selectionAppState');
+                if (!saved) return; // no saved state
+
+                const state = JSON.parse(saved);
+
+                // restore selections
+                selectedItems = state.selectedItems || [];
+                dynamicBedrooms = state.dynamicBedrooms || [];
+                dynamicBaths = state.dynamicBaths || [];
+                window.selectedExtraRooms = state.selectedExtraRooms || [];
+
+                // restore house config
+                houseNameInput.value = state.houseName || '';
+                floorPlanSelect.value = state.floorPlan || '';
+                bedsInput.value = state.beds || '';
+                bathsInput.value = state.baths || '';
+
+                // if beds/baths were set, lock the inputs and rebuild rooms
+                if ((state.beds && state.beds > 0) || (state.baths && state.baths > 0) || (state.selectedExtraRooms && state.selectedExtraRooms.length > 0)) {
+                    bedsInput.disabled = true;
+                    bathsInput.disabled = true;
+                    document.querySelectorAll('#extraRoomsGroup .toggle-btn').forEach(b => b.disabled = true);
+                    setBedsBtn.style.display = 'none';
+                    editBedsBtn.style.display = 'inline-block';
+
+                    // restore toggle states
+                    document.querySelectorAll('#extraRoomsGroup .toggle-btn').forEach(btn => {
+                        const room = btn.getAttribute('data-room');
+                        if (state.selectedExtraRooms && state.selectedExtraRooms.includes(room)) {
+                            btn.classList.add('active');
+                        }
+                    });
+
+                    // rebuild rooms array
+                    updateRoomsArray();
+                }
+
+                // restore house name disabled state if it was confirmed
+                if (state.houseName) {
+                    houseNameInput.disabled = true;
+                    confirmHouseBtn.style.display = 'none';
+                    editHouseBtn.style.display = 'inline-block';
+                }
+
+                // restore active tab
+                if (state.activeRoomTab) {
+                    window.activeRoomTab = state.activeRoomTab;
+                }
+
+                // restore spreadsheet data and headers
+                spreadsheetData = state.spreadsheetData || [];
+                headers = state.headers || [];
+                
+                // restore file name display
+                if (state.lastFileName) {
+                    document.getElementById('fileName').textContent = state.lastFileName;
+                }
+                
+                // repopulate the row dropdown if we have spreadsheet data
+                if (spreadsheetData.length > 0) {
+                    populateDropdown();
+                    document.getElementById('selectorSection').classList.add('active');
+                }
+
+                // if there are selected items, display them
+                if (selectedItems.length > 0) {
+                    displaySelectedItems();
+                }
+            } catch (err) {
+                console.error('Error loading state:', err);
+                // silently fail; user continues with blank slate
+            }
+        }
+
+        function clearState() {
+            localStorage.removeItem('selectionAppState');
+            // reset form
+            selectedItems = [];
+            dynamicBedrooms = [];
+            dynamicBaths = [];
+            window.selectedExtraRooms = [];
+            houseNameInput.value = '';
+            houseNameInput.disabled = false;
+            confirmHouseBtn.style.display = 'inline-block';
+            editHouseBtn.style.display = 'none';
+            floorPlanSelect.value = '';
+            bedsInput.value = '';
+            bedsInput.disabled = false;
+            bathsInput.value = '';
+            bathsInput.disabled = false;
+            setBedsBtn.style.display = 'inline-block';
+            editBedsBtn.style.display = 'none';
+            document.querySelectorAll('#extraRoomsGroup .toggle-btn').forEach(b => {
+                b.disabled = false;
+                b.classList.remove('active');
+            });
+            rooms = [...baseRooms];
+            populateRoomDropdown();
+            selectorSection.classList.remove('active');
+            rowDetails.classList.remove('active');
+            selectedItemsSection.classList.remove('active');
+            rowSelect.innerHTML = '<option value="">-- Choose a row --</option>';
+            spreadsheetData = [];
+            headers = [];
+            currentSelectedRow = null;
+            errorDiv.textContent = '';
+            fileName.textContent = '';
+        }
+
+        // Add "New Project" button listener
+        const newProjectBtn = document.getElementById('newProjectBtn');
+        if (newProjectBtn) {
+            newProjectBtn.addEventListener('click', function() {
+                if (confirm('Start a new project? This will clear all current selections. Continue?')) {
+                    clearState();
+                }
+            });
+        }
+
+
         function handleConfirmHouse() {
             const name = houseNameInput.value.trim();
             if (!name) {
@@ -547,6 +695,7 @@
             houseNameInput.disabled = true;
             confirmHouseBtn.style.display = 'none';
             editHouseBtn.style.display = 'inline-block';
+            saveState();
         }
 
         function handleEditHouse() {
@@ -668,6 +817,7 @@
             editBedsBtn.style.display = 'inline-block';
 
             updateRoomsArray();
+            saveState();
         }
 
         function handleEditBedsBaths() {
@@ -871,6 +1021,7 @@
                     // ignore
                 }
                 roomSelect.value = '';
+                saveState();
             } catch (err) {
                 console.error(err);
                 errorDiv.textContent = 'Error during assign: ' + (err && err.message ? err.message : err);
@@ -908,13 +1059,14 @@
             }
             errorDiv.textContent = '';
 
-            const existsIndex = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber);
-            if (existsIndex !== -1) {
-                selectedItems[existsIndex].room = targetRoom;
-            } else {
+            // check if this row already exists in THIS SPECIFIC ROOM (not just anywhere)
+            const existsInRoom = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber && it.room === targetRoom);
+            if (existsInRoom === -1) {
+                // doesn't exist in this room, so add it (allows same row in multiple rooms)
                 const itemToAdd = { ...currentSelectedRow, room: targetRoom };
                 selectedItems.push(itemToAdd);
             }
+            // if it already exists in this exact room, do nothing (prevent duplicates in same room)
 
             // ensure the assigned room becomes the active tab
             window.activeRoomTab = targetRoom;
@@ -930,6 +1082,7 @@
             // rowSelect.value = '';
             // keep roomSelect as-is (user might still want to use it)
             // don't disable the button; keep it enabled for next selection
+            saveState();
             } catch (err) {
                 console.error('handleAssignToCurrentRoom ERROR:', err);
                 errorDiv.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
