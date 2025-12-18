@@ -408,10 +408,15 @@
         </div>
 
         <div class="selector-section" id="selectorSection">
-            <label for="rowSelect">Select a Row:</label>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <label for="rowSelect">Select an Item:</label>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <select id="rowSelect">
                     <option value="">-- Choose a row --</option>
+                </select>
+                <select id="subsectionSelect" style="min-width: 150px;">
+                    <option value="Subsection 1">Subsection 1</option>
+                    <option value="Subsection 2">Subsection 2</option>
+                    <option value="Subsection 3">Subsection 3</option>
                 </select>
                 <button id="confirmSelectionBtn" class="assign-btn" style="background:#5568d3;" onclick="handleAssignToCurrentRoom(); return false;">Confirm Selection</button>
             </div>
@@ -431,7 +436,7 @@
         </div>
 
         <div class="selected-items" id="selectedItems">
-            <h3>Selected Items</h3>
+            <h3>Selected Room to Add Item</h3>
             <div style="display:flex; gap:8px; align-items:center;">
                 <div id="roomTabs" class="room-tabs" aria-label="Room Tabs"></div>
             </div>
@@ -512,28 +517,32 @@
         loadState();
 
         // Event listeners
-        startScratchBtn.addEventListener('click', () => {
-            fileMode = 'scratch';
-            fileInput.value = '';
-            fileInput.click();
-        });
-        existingSpecBtn.addEventListener('click', () => {
-            fileMode = 'existing';
-            fileInput.value = '';
-            fileInput.click();
-        });
-        fileInput.addEventListener('change', handleFileUpload);
+        if (startScratchBtn) {
+            startScratchBtn.addEventListener('click', () => {
+                fileMode = 'scratch';
+                fileInput.value = '';
+                fileInput.click();
+            });
+        }
+        if (existingSpecBtn) {
+            existingSpecBtn.addEventListener('click', () => {
+                fileMode = 'existing';
+                fileInput.value = '';
+                fileInput.click();
+            });
+        }
+        if (fileInput) fileInput.addEventListener('change', handleFileUpload);
 
-        rowSelect.addEventListener('change', handleRowSelect);
-        assignBtn.addEventListener('click', handleAssignToRoom);
+        if (rowSelect) rowSelect.addEventListener('change', handleRowSelect);
+        if (assignBtn) assignBtn.addEventListener('click', handleAssignToRoom);
         if (assignCurrentBtn) assignCurrentBtn.addEventListener('click', handleAssignToCurrentRoom);
         if (confirmSelectionBtn) {
             confirmSelectionBtn.addEventListener('click', handleAssignToCurrentRoom);
         }
-        confirmHouseBtn.addEventListener('click', handleConfirmHouse);
-        editHouseBtn.addEventListener('click', handleEditHouse);
-        setBedsBtn.addEventListener('click', handleSetBedsBaths);
-        editBedsBtn.addEventListener('click', handleEditBedsBaths);
+        if (confirmHouseBtn) confirmHouseBtn.addEventListener('click', handleConfirmHouse);
+        if (editHouseBtn) editHouseBtn.addEventListener('click', handleEditHouse);
+        if (setBedsBtn) setBedsBtn.addEventListener('click', handleSetBedsBaths);
+        if (editBedsBtn) editBedsBtn.addEventListener('click', handleEditBedsBaths);
         // extra room toggles
         document.addEventListener('click', function (e) {
             if (e.target && e.target.classList && e.target.classList.contains('toggle-btn')) {
@@ -1059,11 +1068,15 @@
             }
             errorDiv.textContent = '';
 
-            // check if this row already exists in THIS SPECIFIC ROOM (not just anywhere)
-            const existsInRoom = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber && it.room === targetRoom);
-            if (existsInRoom === -1) {
-                // doesn't exist in this room, so add it (allows same row in multiple rooms)
-                const itemToAdd = { ...currentSelectedRow, room: targetRoom };
+            // get subsection from dropdown
+            const subsectionSelect = document.getElementById('subsectionSelect');
+            const targetSubsection = subsectionSelect ? (subsectionSelect.value || 'Subsection 1') : 'Subsection 1';
+
+            // check if this row already exists in THIS SPECIFIC ROOM+SUBSECTION
+            const existsExact = selectedItems.findIndex(it => it._rowNumber === currentSelectedRow._rowNumber && it.room === targetRoom && ((it.subsection || 'Subsection 1') === targetSubsection));
+            if (existsExact === -1) {
+                // doesn't exist in this room/subsection, so add it (allows same row in multiple rooms or subsections)
+                const itemToAdd = { ...currentSelectedRow, room: targetRoom, subsection: targetSubsection };
                 selectedItems.push(itemToAdd);
             }
             // if it already exists in this exact room, do nothing (prevent duplicates in same room)
@@ -1144,33 +1157,55 @@
                     emptyNote.textContent = 'No items yet.';
                     contentDiv.appendChild(emptyNote);
                 } else {
+                    // Group items by subsection
+                    const subsectionGroups = {};
                     items.forEach(({ item }) => {
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'selected-item';
+                        const subsection = item.subsection || 'Subsection 1';
+                        if (!subsectionGroups[subsection]) {
+                            subsectionGroups[subsection] = [];
+                        }
+                        subsectionGroups[subsection].push({ item, originalIndex: items.find(x => x.item === item).originalIndex });
+                    });
 
-                        const content = document.createElement('div');
-                        content.className = 'selected-item-content';
+                    // Display each subsection with header
+                    Object.keys(subsectionGroups).sort().forEach(subsection => {
+                        const subsectionHeader = document.createElement('div');
+                        subsectionHeader.style.fontWeight = '600';
+                        subsectionHeader.style.color = '#667eea';
+                        subsectionHeader.style.marginTop = '12px';
+                        subsectionHeader.style.marginBottom = '8px';
+                        subsectionHeader.style.fontSize = '13px';
+                        subsectionHeader.textContent = subsection;
+                        contentDiv.appendChild(subsectionHeader);
 
-                        const summary = document.createElement('div');
-                        summary.className = 'selected-item-summary';
-                        const displayValues = headers.slice(0, 3).map(h => item[h]).filter(v => v !== '');
-                        summary.textContent = `Row ${item._rowNumber}: ${displayValues.join(' - ')}`;
+                        subsectionGroups[subsection].forEach(({ item }) => {
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'selected-item';
 
-                        const details = document.createElement('div');
-                        details.className = 'selected-item-details';
-                        details.textContent = headers.map(h => `${h}: ${item[h]}`).join(' | ');
+                            const content = document.createElement('div');
+                            content.className = 'selected-item-content';
 
-                        content.appendChild(summary);
-                        content.appendChild(details);
+                            const summary = document.createElement('div');
+                            summary.className = 'selected-item-summary';
+                            const displayValues = headers.slice(0, 3).map(h => item[h]).filter(v => v !== '');
+                            summary.textContent = `Row ${item._rowNumber}: ${displayValues.join(' - ')}`;
 
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.className = 'delete-btn';
-                        deleteBtn.textContent = 'Delete';
-                        deleteBtn.onclick = () => deleteSelectedItemByRowNumber(item._rowNumber);
+                            const details = document.createElement('div');
+                            details.className = 'selected-item-details';
+                            details.textContent = headers.map(h => `${h}: ${item[h]}`).join(' | ');
 
-                        itemDiv.appendChild(content);
-                        itemDiv.appendChild(deleteBtn);
-                        contentDiv.appendChild(itemDiv);
+                            content.appendChild(summary);
+                            content.appendChild(details);
+
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'delete-btn';
+                            deleteBtn.textContent = 'Delete';
+                            deleteBtn.onclick = () => deleteSelectedItem(item._rowNumber, item.room, item.subsection);
+
+                            itemDiv.appendChild(content);
+                            itemDiv.appendChild(deleteBtn);
+                            contentDiv.appendChild(itemDiv);
+                        });
                     });
                 }
 
@@ -1194,11 +1229,21 @@
             };
         }
 
-        function deleteSelectedItemByRowNumber(rowNumber) {
-            const idx = selectedItems.findIndex(it => it._rowNumber === rowNumber);
+        function deleteSelectedItem(rowNumber, room, subsection) {
+            const matchSub = subsection || 'Subsection 1';
+            const idx = selectedItems.findIndex(it => it._rowNumber === rowNumber && it.room === room && ((it.subsection || 'Subsection 1') === matchSub));
             if (idx !== -1) {
                 selectedItems.splice(idx, 1);
                 displaySelectedItems();
+                saveState();
+                return;
+            }
+            // fallback: if exact match not found, remove first item with that rowNumber
+            const fallback = selectedItems.findIndex(it => it._rowNumber === rowNumber);
+            if (fallback !== -1) {
+                selectedItems.splice(fallback, 1);
+                displaySelectedItems();
+                saveState();
             }
         }
     </script>
