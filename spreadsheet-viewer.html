@@ -12,7 +12,7 @@
 
 <body>
     <div class="container">
-        <h1>📊 Selection Selector Appy App</h1>
+        <h1>🏠 Selection Selector Appy App</h1>
 
         <div class="upload-section">
             <div class="file-buttons">
@@ -30,7 +30,6 @@
         <div class="house-row">
             <div class="house-input">
                 <input id="houseNameInput" type="text" placeholder="Enter house name" />
-                <button id="confirmHouseBtn" type="button" class="confirm-btn" onclick="handleConfirmHouse(); return false;">Confirm</button>
                 <button id="editHouseBtn" type="button" class="edit-btn" style="display:none;">Edit</button>
             </div>
             <select id="floorPlanSelect" class="floor-plan-select" aria-label="Floor Plan">
@@ -39,16 +38,19 @@
                 <option value="Oakley">Oakley</option>
                 <option value="MGM Grand">MGM Grand</option>
             </select>
+        </div>
 
-            <div class="spec-block" style="margin-left:12px;">
-                <label style="font-weight:600; margin-bottom:6px;">Beds / Baths</label>
-                <div style="display:flex; gap:8px; align-items:center;">
+        <div class="beds-and-extra-rooms-row">
+            <div class="beds-baths-wrapper">
+                <label style="font-weight:600;">Beds / Baths</label>
+                <div style="display:flex; gap:8px;">
                     <input id="bedsInput" type="number" min="0" placeholder="Beds" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
                     <input id="bathsInput" type="number" min="0" placeholder="Baths" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
-                    <button id="setBedsBtn" type="button" class="file-btn" style="padding:8px 10px;font-size:13px;" onclick="alert('Click detected'); handleSetBedsBaths(); return false;">Set House Layout</button>
-                    <button id="editBedsBtn" type="button" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;">Edit House Layout</button>
                 </div>
-                <label style="font-weight:600; margin-top:8px;">Extra Rooms (toggle)</label>
+            </div>
+
+            <div class="extra-rooms-section">
+                <label style="font-weight:600;">Extra Rooms</label>
                 <div class="toggle-group" id="extraRoomsGroup">
                     <button type="button" class="toggle-btn" data-room="Office">Office</button>
                     <button type="button" class="toggle-btn" data-room="Den">Den</button>
@@ -58,6 +60,11 @@
                     <button type="button" class="toggle-btn" data-room="Garage">Garage</button>
                 </div>
             </div>
+        </div>
+
+        <div class="beds-baths-controls">
+            <button id="setBedsBtn" type="button" class="file-btn" style="padding:8px 10px;font-size:13px;" onclick="handleSetBedsBaths(); return false;">Set House Layout</button>
+            <button id="editBedsBtn" type="button" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;">Edit House Layout</button>
         </div>
 
         <div class="selector-section" id="selectorSection">
@@ -90,10 +97,10 @@
 
         <div class="selected-items" id="selectedItems">
             <h3>Selected Room to Add Item</h3>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div style="display:flex; gap:16px; width:100%;">
                 <div id="roomTabs" class="room-tabs" aria-label="Room Tabs"></div>
+                <div id="roomTabContent" class="room-tab-content" style="flex:1;"></div>
             </div>
-            <div id="roomTabContent" class="room-tab-content"></div>
         </div>
 
         <div style="text-align: center; margin-top: 20px;">

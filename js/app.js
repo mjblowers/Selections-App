@@ -308,17 +308,25 @@ function createItemElement(item) {
     const content = document.createElement('div');
     content.className = 'selected-item-content';
 
-    const summary = document.createElement('div');
-    summary.className = 'selected-item-summary';
-    const displayValues = State.headers.slice(0, 3).map(h => item[h]).filter(v => v !== '');
-    summary.textContent = `Row ${item._rowNumber}: ${displayValues.join(' - ')}`;
-
     const details = document.createElement('div');
     details.className = 'selected-item-details';
-    details.textContent = State.headers.map(h => `${h}: ${item[h]}`).join(' | ');
+    details.textContent = State.headers.map(h => item[h]).filter(v => v !== '').join(' | ');
 
-    content.appendChild(summary);
     content.appendChild(details);
+
+    // Quantity input
+    const quantityContainer = document.createElement('div');
+    quantityContainer.className = 'quantity-container';
+    const quantityInput = document.createElement('input');
+    quantityInput.type = 'number';
+    quantityInput.className = 'quantity-input';
+    quantityInput.value = item.quantity || 1;
+    quantityInput.min = '1';
+    quantityInput.onchange = () => {
+        item.quantity = parseInt(quantityInput.value) || 1;
+        saveState();
+    };
+    quantityContainer.appendChild(quantityInput);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
@@ -335,6 +343,7 @@ function createItemElement(item) {
     };
 
     itemDiv.appendChild(content);
+    itemDiv.appendChild(quantityContainer);
     itemDiv.appendChild(deleteBtn);
     return itemDiv;
 }
@@ -675,15 +684,10 @@ function displayRowDetails(row) {
         const item = document.createElement('div');
         item.className = 'detail-item';
 
-        const label = document.createElement('span');
-        label.className = 'detail-label';
-        label.textContent = header;
-
         const value = document.createElement('span');
         value.className = 'detail-value';
         value.textContent = row[header] ? row[header] : '(empty)';
 
-        item.appendChild(label);
         item.appendChild(value);
         detailsContent.appendChild(item);
     });
@@ -784,7 +788,7 @@ async function handleExport() {
         }
 
         const dataHeaders = State.headers.slice().filter(k => k !== 'subsection');
-        const selectionCols = ['Room', '_rowNumber', ...dataHeaders];
+        const selectionCols = ['Room', '_rowNumber', 'Quantity', ...dataHeaders];
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Selection App';
@@ -804,6 +808,7 @@ async function handleExport() {
             const row = selectionCols.map(col => {
                 if (col === 'Room') return item.room || '';
                 if (col === '_rowNumber') return item._rowNumber || '';
+                if (col === 'Quantity') return item.quantity || 1;
                 return item[col] ?? '';
             });
             allWs.addRow(row);
@@ -857,6 +862,7 @@ async function handleExport() {
                     const row = selectionCols.map(col => {
                         if (col === 'Room') return item.room || '';
                         if (col === '_rowNumber') return item._rowNumber || '';
+                        if (col === 'Quantity') return item.quantity || 1;
                         return item[col] ?? '';
                     });
                     ws.addRow(row);

@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a1a1a;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -20,7 +20,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     padding: 40px;
-    max-width: 900px;
+    max-width: 1400px;
     width: 100%;
 }
 
@@ -152,6 +152,26 @@ label {
     background: #c0392b;
 }
 
+.quantity-container {
+    display: flex;
+    align-items: center;
+}
+
+.quantity-input {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    text-align: center;
+}
+
+.quantity-input:focus {
+    outline: none;
+    border-color: #000;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
 /* Upload Section */
 .upload-section {
     margin-bottom: 14px;
@@ -195,20 +215,46 @@ label {
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
 .house-input {
     flex: 1;
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    align-items: center;
     min-width: 240px;
 }
 
+.beds-baths-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.beds-and-extra-rooms-row {
+    display: flex;
+    gap: 60px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.beds-baths-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.extra-rooms-section {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 #houseNameInput {
-    flex: 1;
     padding: 10px 12px;
     border-radius: 6px;
     border: 2px solid #ddd;
@@ -218,13 +264,30 @@ label {
 
 #houseNameInput:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #000;
 }
 
 #houseNameInput:disabled {
     background: #f3f4f6;
     color: #444;
     cursor: not-allowed;
+}
+
+#bedsInput,
+#bathsInput {
+    padding: 10px 12px;
+    width: 100px;
+    border-radius: 6px;
+    border: 2px solid #ddd;
+    font-size: 14px;
+    height: 38px;
+    box-sizing: border-box;
+}
+
+#bedsInput:focus,
+#bathsInput:focus {
+    outline: none;
+    border-color: #000;
 }
 
 .floor-plan-select {
@@ -277,27 +340,32 @@ label {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 6px;
+    margin-top: 0;
+    align-items: center;
 }
 
 .toggle-btn {
-    padding: 8px 10px;
+    padding: 8px 12px;
     border-radius: 6px;
     border: 2px solid #ddd;
     background: white;
     cursor: pointer;
     font-size: 13px;
     transition: all 0.3s;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .toggle-btn:hover {
-    border-color: #667eea;
+    border-color: #000;
 }
 
 .toggle-btn.active {
-    background: #667eea;
+    background: #000;
     color: white;
-    border-color: #5568d3;
+    border-color: #000;
 }
 
 .toggle-btn:disabled {
@@ -406,13 +474,14 @@ select:focus {
 }
 
 .room-tabs-container {
-    margin-bottom: 16px;
+    margin-bottom: 0;
 }
 
 .room-tabs {
     display: flex;
+    flex-direction: column;
     gap: 6px;
-    flex-wrap: wrap;
+    min-width: 120px;
 }
 
 .room-tab-btn {
@@ -423,20 +492,22 @@ select:focus {
     cursor: pointer;
     font-size: 13px;
     transition: all 0.3s;
+    text-align: left;
 }
 
 .room-tab-btn:hover {
-    border-color: #667eea;
+    border-color: #000;
 }
 
 .room-tab-btn.active {
-    background: #667eea;
+    background: #000;
     color: #fff;
-    border-color: #5568d3;
+    border-color: #000;
 }
 
 .room-tab-content {
-    margin-top: 12px;
+    margin-top: 0;
+    flex: 1;
 }
 
 .room-section {
@@ -448,7 +519,7 @@ select:focus {
     color: #333;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #667eea;
+    border-bottom: 2px solid #000;
 }
 
 .selected-item {
@@ -456,7 +527,7 @@ select:focus {
     padding: 12px;
     margin-bottom: 8px;
     border-radius: 6px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #000;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -493,10 +564,11 @@ select:focus {
 /* Subsection Headers (in room display) */
 .subsection-header {
     font-weight: 600;
-    color: #667eea;
+    color: #000;
     margin-top: 12px;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 20px;
+    text-align: center;
 }
 
 /* Export Section */
