@@ -379,6 +379,12 @@ function renderSelectedItems() {
         contentDiv.dataset.room = roomName;
         contentDiv.style.display = roomName === State.activeRoomTab ? 'block' : 'none';
 
+        // Product Group (Sheet) name
+        const sheetLabel = document.createElement('div');
+        sheetLabel.className = 'product-group-label';
+        sheetLabel.textContent = State.activeSheet;
+        contentDiv.appendChild(sheetLabel);
+
         const title = document.createElement('div');
         title.className = 'room-title';
         title.textContent = roomName;
@@ -416,6 +422,12 @@ function renderSelectedItems() {
     };
 
     updateExportButtonState();
+
+    // Update show all view if it's currently visible
+    const showAllContent = document.getElementById('showAllContent');
+    if (showAllContent && showAllContent.style.display !== 'none') {
+        renderAllItems();
+    }
 }
 
 /**
@@ -543,6 +555,93 @@ function updateExportButtonState() {
     if (exportBtn) {
         exportBtn.disabled = State.selectedItems.length === 0;
     }
+}
+
+/**
+ * Toggle Show All View
+ */
+function toggleShowAllView() {
+    const showAllBtn = document.getElementById('showAllBtn');
+    const roomTabContent = document.getElementById('roomTabContent');
+    const showAllContent = document.getElementById('showAllContent');
+    
+    if (!showAllBtn || !roomTabContent || !showAllContent) return;
+
+    const isShowingAll = showAllContent.style.display !== 'none';
+
+    if (isShowingAll) {
+        // Switch back to normal view
+        roomTabContent.style.display = 'block';
+        showAllContent.style.display = 'none';
+        showAllBtn.textContent = 'Show All';
+    } else {
+        // Switch to show all view
+        roomTabContent.style.display = 'none';
+        showAllContent.style.display = 'block';
+        showAllBtn.textContent = 'Show By Room';
+        renderAllItems();
+    }
+}
+
+/**
+ * Render all items view (all rooms in current product group)
+ */
+function renderAllItems() {
+    const showAllContent = document.getElementById('showAllContent');
+    if (!showAllContent) return;
+
+    showAllContent.innerHTML = '';
+
+    // Get items from current active sheet only
+    const itemsInCurrentSheet = State.selectedItems.filter(item => item.sheet === State.activeSheet);
+    
+    if (itemsInCurrentSheet.length === 0) {
+        const empty = document.createElement('div');
+        empty.textContent = 'No items in this product group.';
+        empty.style.color = 'var(--text-tertiary)';
+        empty.style.fontSize = '13px';
+        empty.style.padding = '12px';
+        showAllContent.appendChild(empty);
+        return;
+    }
+
+    // Group items by room
+    const roomGroups = {};
+    State.rooms.forEach(r => roomGroups[r] = []);
+    roomGroups['Unassigned'] = [];
+
+    itemsInCurrentSheet.forEach(item => {
+        const room = item.room && roomGroups[item.room] ? item.room : 'Unassigned';
+        roomGroups[room].push(item);
+    });
+
+    // Render each room
+    Object.keys(roomGroups).forEach(roomName => {
+        const items = roomGroups[roomName];
+        if (!items || items.length === 0) return;
+
+        // Room header
+        const roomDiv = document.createElement('div');
+        roomDiv.style.marginBottom = '16px';
+
+        const roomHeader = document.createElement('div');
+        roomHeader.className = 'all-items-room-header';
+        roomHeader.textContent = roomName;
+        roomHeader.style.fontSize = '14px';
+        roomHeader.style.fontWeight = '600';
+        roomHeader.style.color = 'var(--text-primary)';
+        roomHeader.style.marginBottom = '8px';
+        roomHeader.style.paddingBottom = '4px';
+        roomHeader.style.borderBottom = '2px solid var(--border-color)';
+        roomDiv.appendChild(roomHeader);
+
+        // Room items
+        items.forEach(item => {
+            roomDiv.appendChild(createItemElement(item));
+        });
+
+        showAllContent.appendChild(roomDiv);
+    });
 }
 
 /**
@@ -689,6 +788,12 @@ function setupEventListenersInternal() {
             }
         }
     });
+
+    // Show All button
+    const showAllBtn = document.getElementById('showAllBtn');
+    if (showAllBtn) {
+        showAllBtn.addEventListener('click', toggleShowAllView);
+    }
 }
 
 /**

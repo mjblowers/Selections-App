@@ -101,10 +101,13 @@
         </div>
 
         <div class="selected-items" id="selectedItems">
-            <h3>Selected Room to Add Item</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3>Selected Room to Add Item</h3>
+                <button id="showAllBtn" class="file-btn" style="padding:8px 14px; font-size:13px;">Show All</button>
+            </div>
             <div style="display:flex; gap:16px; width:100%;">
                 <div style="display:flex; flex-direction:column; gap:8px; min-width:150px;">
-                    <div style="font-weight:600; font-size:14px; color:#333;">Product Group:</div>
+                    <div style="font-weight:600; font-size:14px;">Product Group:</div>
                     <div id="sheetTabs" class="sheet-tabs" style="display:flex; flex-direction:column; gap:4px;"></div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px; min-width:150px;">
@@ -112,8 +115,8 @@
                     <div id="roomTabs" class="room-tabs" aria-label="Room Tabs" style="display:flex; flex-direction:column; gap:4px;"></div>
                 </div>
                 <div id="roomTabContent" class="room-tab-content" style="flex:1;"></div>
+                <div id="showAllContent" class="show-all-content" style="display:none; flex:1;"></div>
             </div>
-        </div>
 
         <div style="text-align: center; margin-top: 20px;">
             <button id="exportBtn" class="file-btn" disabled>Export to Excel</button>
