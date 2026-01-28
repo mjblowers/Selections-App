@@ -4,7 +4,15 @@
 
 const FileHandler = {
     /**
-     * Handle file upload and parse spreadsheet
+     * Check if a row is completely empty
+     */
+    isEmptyRow(row) {
+        if (!row || row.length === 0) return true;
+        return row.every(cell => cell === undefined || cell === null || cell === '');
+    },
+
+    /**
+     * Handle file upload and parse all spreadsheet sheets
      */
     handleFileUpload(file, state) {
         return new Promise((resolve, reject) => {
@@ -18,25 +26,60 @@ const FileHandler = {
                 try {
                     const data = new Uint8Array(ev.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-                    if (jsonData.length < 2) {
-                        throw new Error('Spreadsheet must have at least a header row and one data row');
-                    }
-
-                    state.headers = jsonData[0];
-                    state.spreadsheetData = jsonData.slice(1).map((row, index) => {
-                        const rowObj = { _rowNumber: index + 2 };
-                        state.headers.forEach((header, i) => {
-                            rowObj[header] = row[i] !== undefined ? row[i] : '';
-                        });
-                        return rowObj;
+                    
+                    // Parse all sheets
+                    const allSheets = {};
+                    const sheetNames = workbook.SheetNames;
+                    
+                    sheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        
+                        if (jsonData.length >= 2) {
+                            const headers = jsonData[0];
+                            const data = [];
+                            
+                            // Process rows until we hit an empty row
+                            for (let i = 1; i < jsonData.length; i++) {
+                                const row = jsonData[i];
+                                
+                                // Stop at first empty row
+                                if (FileHandler.isEmptyRow(row)) {
+                                    break;
+                                }
+                                
+                                const rowObj = { _rowNumber: i + 1 };
+                                headers.forEach((header, j) => {
+                                    rowObj[header] = row[j] !== undefined ? row[j] : '';
+                                });
+                                data.push(rowObj);
+                            }
+                            
+                            // Only add sheet if it has at least one data row
+                            if (data.length > 0) {
+                                allSheets[sheetName] = { headers, data };
+                            }
+                        }
                     });
+                    
+                    if (Object.keys(allSheets).length === 0) {
+                        throw new Error('No valid sheets found. Each sheet must have at least a header row and one data row');
+                    }
+                    
+                    // Store all sheets
+                    state.allSheets = allSheets;
+                    state.sheetNames = Object.keys(allSheets);
+                    
+                    // Set first sheet as active
+                    state.activeSheet = state.sheetNames[0];
+                    state.headers = allSheets[state.activeSheet].headers;
+                    state.spreadsheetData = allSheets[state.activeSheet].data;
 
                     resolve({
                         fileName: file.name,
                         rowCount: state.spreadsheetData.length,
+                        sheetNames: state.sheetNames,
+                        activeSheet: state.activeSheet,
                     });
                 } catch (error) {
                     reject(error);

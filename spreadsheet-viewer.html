@@ -30,7 +30,8 @@
         <div class="house-row">
             <div class="house-input">
                 <input id="houseNameInput" type="text" placeholder="Enter house name" />
-                <button id="editHouseBtn" type="button" class="edit-btn" style="display:none;">Edit</button>
+                <button id="confirmHouseBtn" type="button" class="file-btn" style="padding:8px 10px;font-size:13px;" onclick="handleConfirmHouse(); return false;">Confirm House</button>
+                <button id="editHouseBtn" type="button" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;" onclick="document.getElementById('houseNameInput').disabled = false; this.style.display = 'none'; document.getElementById('confirmHouseBtn').style.display = 'inline-block'; return false;">Edit</button>
             </div>
             <select id="floorPlanSelect" class="floor-plan-select" aria-label="Floor Plan">
                 <option value="">-- Floor Plan --</option>
@@ -58,6 +59,10 @@
                     <button type="button" class="toggle-btn" data-room="Dining">Dining</button>
                     <button type="button" class="toggle-btn" data-room="Family">Family</button>
                     <button type="button" class="toggle-btn" data-room="Garage">Garage</button>
+                    <button type="button" class="toggle-btn" data-room="Kitchen">Kitchen</button>
+                    <button type="button" class="toggle-btn" data-room="Pantry">Pantry</button>
+                    <button type="button" class="toggle-btn" data-room="Laundry">Laundry</button>
+                    <button type="button" class="toggle-btn" data-room="Master Bath">Master Bath</button>
                 </div>
             </div>
         </div>
@@ -68,15 +73,13 @@
         </div>
 
         <div class="selector-section" id="selectorSection">
-            <label for="rowSelect">Select an Item:</label>
+            <label for="rowSelect">Select Product Group:</label>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <select id="sheetSelect" style="display:none; min-width: 150px;">
+                    <option value="">-- Select Sheet --</option>
+                </select>
                 <select id="rowSelect">
                     <option value="">-- Choose a row --</option>
-                </select>
-                <select id="subsectionSelect" style="min-width: 150px;">
-                    <option value="Subsection 1">Subsection 1</option>
-                    <option value="Subsection 2">Subsection 2</option>
-                    <option value="Subsection 3">Subsection 3</option>
                 </select>
                 <button id="confirmSelectionBtn" class="assign-btn" style="background:#5568d3;">Confirm Selection</button>
             </div>
@@ -98,7 +101,14 @@
         <div class="selected-items" id="selectedItems">
             <h3>Selected Room to Add Item</h3>
             <div style="display:flex; gap:16px; width:100%;">
-                <div id="roomTabs" class="room-tabs" aria-label="Room Tabs"></div>
+                <div style="display:flex; flex-direction:column; gap:8px; min-width:150px;">
+                    <div style="font-weight:600; font-size:14px; color:#333;">Product Group:</div>
+                    <div id="sheetTabs" class="sheet-tabs" style="display:flex; flex-direction:column; gap:4px;"></div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px; min-width:150px;">
+                    <div style="font-weight:600; font-size:14px; color:#333;">Rooms:</div>
+                    <div id="roomTabs" class="room-tabs" aria-label="Room Tabs" style="display:flex; flex-direction:column; gap:4px;"></div>
+                </div>
                 <div id="roomTabContent" class="room-tab-content" style="flex:1;"></div>
             </div>
         </div>

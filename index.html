@@ -29,6 +29,7 @@
             <div class="file-name" id="fileName"></div>
             <div class="error" id="error"></div>
             <div id="debugOutput" class="debug-output"></div>
+            <p id="versionCheck" style="font-size: 12px; color: #999; padding: 5px;"></p>
         </div>
 
         <!-- House Configuration Section -->
@@ -70,8 +71,11 @@
 
         <!-- Row Selection Section -->
         <div class="selector-section" id="selectorSection">
-            <label for="rowSelect">Select an Item:</label>
+            <label for="rowSelect">Select an Application:</label>
             <div class="selector-controls">
+                <select id="sheetSelect" style="display:none;">
+                    <option value="">-- Select Sheet --</option>
+                </select>
                 <select id="rowSelect"></select>
                 <select id="subsectionSelect">
                     <option value="Subsection 1">Subsection 1</option>

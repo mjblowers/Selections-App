@@ -6,6 +6,9 @@ window.State = {
     // Spreadsheet data
     spreadsheetData: [],
     headers: [],
+    allSheets: {}, // All sheets from uploaded file
+    sheetNames: [], // List of all sheet names
+    activeSheet: null, // Currently selected sheet
     
     // Room configuration
     baseRooms: [],
@@ -36,6 +39,9 @@ window.initializeState = function() {
 window.resetState = function() {
     window.State.spreadsheetData = [];
     window.State.headers = [];
+    window.State.allSheets = {};
+    window.State.sheetNames = [];
+    window.State.activeSheet = null;
     window.State.dynamicBedrooms = [];
     window.State.dynamicBaths = [];
     window.State.selectedExtraRooms = [];

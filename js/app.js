@@ -37,6 +37,13 @@ async function initApp() {
         els = window.UI.getElements();
     }
     
+    // Diagnostic: Check if sheetSelect exists
+    const versionCheck = document.getElementById('versionCheck');
+    const sheetSelectExists = !!document.getElementById('sheetSelect');
+    if (versionCheck) {
+        versionCheck.textContent = `HTML Version: ${sheetSelectExists ? '✓ sheetSelect found' : '✗ sheetSelect NOT found'}`;
+    }
+    
     // Initialize event listeners
     setupEventListenersInternal();
     
@@ -82,6 +89,9 @@ function restoreState(savedState) {
     State.activeRoomTab = savedState.activeRoomTab || null;
     State.spreadsheetData = savedState.spreadsheetData || [];
     State.headers = savedState.headers || [];
+    State.allSheets = savedState.allSheets || {};
+    State.sheetNames = savedState.sheetNames || [];
+    State.activeSheet = savedState.activeSheet || null;
 
     // Restore UI
     els.houseNameInput.value = State.houseName;
@@ -105,6 +115,7 @@ function restoreState(savedState) {
 
     // Populate and show selector
     if (State.spreadsheetData.length > 0) {
+        updateSheetDropdown();
         updateRowDropdown();
         els.selectorSection.classList.add('active');
     }
@@ -131,6 +142,9 @@ function saveState() {
         activeRoomTab: State.activeRoomTab,
         spreadsheetData: State.spreadsheetData,
         headers: State.headers,
+        allSheets: State.allSheets,
+        sheetNames: State.sheetNames,
+        activeSheet: State.activeSheet,
     };
     try {
         localStorage.setItem('selectionAppState', JSON.stringify(state));
@@ -164,6 +178,72 @@ function updateRoomsArray() {
 }
 
 /**
+ * Update sheet dropdown
+ */
+function updateSheetDropdown() {
+    let sheetSelect = document.getElementById('sheetSelect');
+    
+    // If not found, try waiting a bit and searching again
+    if (!sheetSelect) {
+        console.warn('sheetSelect element not found on first attempt, waiting...');
+        setTimeout(() => {
+            sheetSelect = document.getElementById('sheetSelect');
+            if (sheetSelect) {
+                console.log('Found sheetSelect after delay');
+                performSheetDropdownUpdate(sheetSelect);
+            } else {
+                console.error('sheetSelect element still not found after delay');
+            }
+        }, 100);
+        return;
+    }
+    
+    performSheetDropdownUpdate(sheetSelect);
+}
+
+/**
+ * Perform the sheet dropdown update
+ */
+function performSheetDropdownUpdate(sheetSelect) {
+    console.log('Updating sheet dropdown. sheetNames:', State.sheetNames, 'activeSheet:', State.activeSheet);
+    
+    if (window.UI && window.UI.populateSheetDropdown) {
+        window.UI.populateSheetDropdown(sheetSelect, State.sheetNames, State.activeSheet);
+    } else {
+        console.error('window.UI.populateSheetDropdown not available');
+    }
+}
+
+/**
+ * Handle sheet change
+ */
+function handleSheetChange(e) {
+    // Handle both event objects and direct sheet name strings
+    const selectedSheet = typeof e === 'string' ? e : e.target.value;
+    if (!selectedSheet || !State.allSheets[selectedSheet]) {
+        return;
+    }
+
+    State.activeSheet = selectedSheet;
+    State.headers = State.allSheets[selectedSheet].headers;
+    State.spreadsheetData = State.allSheets[selectedSheet].data;
+
+    // Update the sheet dropdown to match the selected sheet
+    const sheetSelect = document.getElementById('sheetSelect');
+    if (sheetSelect) {
+        sheetSelect.value = selectedSheet;
+    }
+
+    updateRowDropdown();
+    renderSelectedItems();
+    const rowDetails = document.getElementById('rowDetails');
+    if (rowDetails) {
+        rowDetails.classList.remove('active');
+    }
+    saveState();
+}
+
+/**
  * Update row dropdown
  */
 function updateRowDropdown() {
@@ -174,7 +254,7 @@ function updateRowDropdown() {
     State.spreadsheetData.forEach((row, index) => {
         const option = document.createElement('option');
         option.value = index;
-        const displayValues = State.headers.slice(0, 3).map(h => row[h]).filter(v => v !== '');
+        const displayValues = State.headers.slice(0, 10).map(h => row[h] !== undefined && row[h] !== '' ? row[h] : 'NULL');
         option.textContent = `Row ${row._rowNumber}: ${displayValues.join(' - ')}`;
         rowSelect.appendChild(option);
     });
@@ -205,33 +285,58 @@ function renderSelectedItems() {
     const selectedItems = document.getElementById('selectedItems');
     
     if (!roomTabs || !roomTabContent) return;
+
+    // Render sheet tabs
+    if (State.sheetNames && State.sheetNames.length > 0 && window.UI && window.UI.renderSheetTabs) {
+        window.UI.renderSheetTabs(State.sheetNames, State.activeSheet, (selectedSheet) => {
+            handleSheetChange({ target: { value: selectedSheet } });
+        }, State.selectedItems);
+    }
     
     roomTabs.innerHTML = '';
     roomTabContent.innerHTML = '';
 
-    // Group
-    const grouped = {};
-    State.rooms.forEach(r => grouped[r] = []);
-    grouped['Unassigned'] = [];
-    State.selectedItems.forEach(it => {
-        const key = it.room && grouped[it.room] ? it.room : 'Unassigned';
-        grouped[key].push(it);
+    // Group by sheet, then by room
+    const sheetGroups = {};
+    State.sheetNames.forEach(sheet => {
+        sheetGroups[sheet] = {};
+        State.rooms.forEach(r => sheetGroups[sheet][r] = []);
+        sheetGroups[sheet]['Unassigned'] = [];
     });
 
-    const roomNames = Object.keys(grouped);
-    if (!State.activeRoomTab || !roomNames.includes(State.activeRoomTab)) {
-        const roomWithItems = roomNames.find(r => grouped[r]?.length > 0);
-        State.activeRoomTab = roomWithItems || roomNames[0] || 'Unassigned';
+    State.selectedItems.forEach(it => {
+        const sheet = it.sheet || State.activeSheet;
+        if (!sheetGroups[sheet]) {
+            sheetGroups[sheet] = {};
+            State.rooms.forEach(r => sheetGroups[sheet][r] = []);
+            sheetGroups[sheet]['Unassigned'] = [];
+        }
+        const room = it.room && sheetGroups[sheet][it.room] ? it.room : 'Unassigned';
+        sheetGroups[sheet][room].push(it);
+    });
+
+    const sheetNames = Object.keys(sheetGroups);
+    if (!State.activeSheet || !sheetNames.includes(State.activeSheet)) {
+        State.activeSheet = sheetNames[0] || State.sheetNames[0];
     }
 
-    // Show selected items section once we have rooms or items
-    if ((State.selectedItems.length > 0 || State.rooms.length > 0) && selectedItems) {
+    // Show selected items section if we have sheets/rooms or items
+    if ((State.sheetNames?.length > 0 || State.rooms?.length > 0 || State.selectedItems.length > 0) && selectedItems) {
         selectedItems.classList.add('active');
     }
 
-    // Render tabs
+    // Get rooms for the current active sheet
+    const roomsInCurrentSheet = sheetGroups[State.activeSheet] || {};
+    const roomNames = Object.keys(roomsInCurrentSheet);
+    
+    if (!State.activeRoomTab || !roomNames.includes(State.activeRoomTab)) {
+        const roomWithItems = roomNames.find(r => roomsInCurrentSheet[r]?.length > 0);
+        State.activeRoomTab = roomWithItems || roomNames[0] || 'Unassigned';
+    }
+
+    // Create room tabs for current sheet
     roomNames.forEach(roomName => {
-        const count = grouped[roomName]?.length || 0;
+        const count = roomsInCurrentSheet[roomName]?.length || 0;
         const btn = document.createElement('button');
         btn.className = 'room-tab-btn';
         btn.dataset.room = roomName;
@@ -239,7 +344,7 @@ function renderSelectedItems() {
         if (roomName === State.activeRoomTab) btn.classList.add('active');
         roomTabs.appendChild(btn);
 
-        // Content
+        // Content container for this room
         const contentDiv = document.createElement('div');
         contentDiv.className = 'room-section';
         contentDiv.dataset.room = roomName;
@@ -250,7 +355,7 @@ function renderSelectedItems() {
         title.textContent = roomName;
         contentDiv.appendChild(title);
 
-        const items = grouped[roomName] || [];
+        const items = roomsInCurrentSheet[roomName] || [];
         if (!items.length) {
             const empty = document.createElement('div');
             empty.textContent = 'No items yet.';
@@ -258,30 +363,16 @@ function renderSelectedItems() {
             empty.style.fontSize = '13px';
             contentDiv.appendChild(empty);
         } else {
-            // Group by subsection
-            const subsections = {};
-            items.forEach(it => {
-                const ss = it.subsection || 'Subsection 1';
-                if (!subsections[ss]) subsections[ss] = [];
-                subsections[ss].push(it);
-            });
-
-            Object.keys(subsections).sort().forEach(ss => {
-                const ssHeader = document.createElement('div');
-                ssHeader.className = 'subsection-header';
-                ssHeader.textContent = ss;
-                contentDiv.appendChild(ssHeader);
-
-                subsections[ss].forEach(item => {
-                    contentDiv.appendChild(createItemElement(item));
-                });
+            // Display items for this room
+            items.forEach(item => {
+                contentDiv.appendChild(createItemElement(item));
             });
         }
 
         roomTabContent.appendChild(contentDiv);
     });
 
-    // Tab switching
+    // Tab switching by room
     roomTabs.onclick = (e) => {
         const btn = e.target.closest('button.room-tab-btn');
         if (!btn) return;
@@ -444,6 +535,7 @@ function setupEventListenersInternal() {
     // File upload
     const startScratchBtn = waitForElement('startScratchBtn') || document.getElementById('startScratchBtn');
     const fileInput = waitForElement('fileInput') || document.getElementById('fileInput');
+    const sheetSelect = waitForElement('sheetSelect') || document.getElementById('sheetSelect');
     const confirmHouseBtn = waitForElement('confirmHouseBtn') || document.getElementById('confirmHouseBtn');
     const editHouseBtn = waitForElement('editHouseBtn') || document.getElementById('editHouseBtn');
     const setBedsBtn = waitForElement('setBedsBtn') || document.getElementById('setBedsBtn');
@@ -469,6 +561,11 @@ function setupEventListenersInternal() {
 
     if (fileInput) {
         fileInput.addEventListener('change', handleFileUpload);
+    }
+
+    // Sheet selection
+    if (sheetSelect) {
+        sheetSelect.addEventListener('change', handleSheetChange);
     }
 
     // House
@@ -567,23 +664,60 @@ function handleFileUpload(e) {
         try {
             const data = new Uint8Array(ev.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-            if (jsonData.length < 2) {
-                throw new Error('Spreadsheet must have at least a header row and one data row');
-            }
-
-            State.headers = jsonData[0];
-            State.spreadsheetData = jsonData.slice(1).map((row, index) => {
-                const rowObj = { _rowNumber: index + 2 };
-                State.headers.forEach((header, i) => {
-                    rowObj[header] = row[i] !== undefined ? row[i] : '';
-                });
-                return rowObj;
+            
+            // Parse all sheets
+            const allSheets = {};
+            const sheetNames = workbook.SheetNames;
+            
+            sheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                
+                if (jsonData.length >= 2) {
+                    const headers = jsonData[0];
+                    const data = [];
+                    
+                    // Process rows until we hit an empty row
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        
+                        // Check if row is completely empty
+                        const isEmpty = !row || row.length === 0 || row.every(cell => cell === undefined || cell === null || cell === '');
+                        
+                        // Stop at first empty row
+                        if (isEmpty) {
+                            break;
+                        }
+                        
+                        const rowObj = { _rowNumber: i + 1 };
+                        headers.forEach((header, j) => {
+                            rowObj[header] = row[j] !== undefined ? row[j] : '';
+                        });
+                        data.push(rowObj);
+                    }
+                    
+                    // Only add sheet if it has at least one data row
+                    if (data.length > 0) {
+                        allSheets[sheetName] = { headers, data };
+                    }
+                }
             });
+            
+            if (Object.keys(allSheets).length === 0) {
+                throw new Error('No valid sheets found. Each sheet must have at least a header row and one data row');
+            }
+            
+            // Store all sheets
+            State.allSheets = allSheets;
+            State.sheetNames = Object.keys(allSheets);
+            State.activeSheet = State.sheetNames[0];
+            State.headers = allSheets[State.activeSheet].headers;
+            State.spreadsheetData = allSheets[State.activeSheet].data;
 
+            // Update sheet dropdown
+            updateSheetDropdown();
             updateRowDropdown();
+            
             const selectorSection = document.getElementById('selectorSection') || els.selectorSection;
             if (selectorSection) {
                 selectorSection.classList.add('active');
@@ -699,7 +833,6 @@ function displayRowDetails(row) {
  */
 function handleConfirmSelection() {
     const rowSelect = document.getElementById('rowSelect');
-    const subsectionSelect = document.getElementById('subsectionSelect');
 
     // Make sure a row is selected
     if (!rowSelect || rowSelect.value === '') {
@@ -725,11 +858,9 @@ function handleConfirmSelection() {
             return;
         }
     }
-
-    const subsection = subsectionSelect ? subsectionSelect.value : 'Subsection 1';
     
-    // Add the item (allow duplicates - no duplicate check)
-    State.selectedItems.push({ ...selectedRow, room: targetRoom, subsection });
+    // Add the item with current sheet and room (no subsection)
+    State.selectedItems.push({ ...selectedRow, sheet: State.activeSheet, room: targetRoom });
 
     State.activeRoomTab = targetRoom;
     renderSelectedItems();
@@ -759,9 +890,9 @@ function handleAssignToRoom() {
         return;
     }
 
-    const existing = State.selectedItems.findIndex(it => it._rowNumber === State.currentSelectedRow._rowNumber && it.room === room);
+    const existing = State.selectedItems.findIndex(it => it._rowNumber === State.currentSelectedRow._rowNumber && it.room === room && it.sheet === State.activeSheet);
     if (existing === -1) {
-        State.selectedItems.push({ ...State.currentSelectedRow, room });
+        State.selectedItems.push({ ...State.currentSelectedRow, sheet: State.activeSheet, room });
     }
 
     renderSelectedItems();
@@ -787,7 +918,7 @@ async function handleExport() {
             return;
         }
 
-        const dataHeaders = State.headers.slice().filter(k => k !== 'subsection');
+        const dataHeaders = State.headers.slice().filter(k => k !== 'subsection' && k !== 'sheet');
         const selectionCols = ['Room', '_rowNumber', 'Quantity', ...dataHeaders];
 
         const workbook = new ExcelJS.Workbook();
@@ -802,10 +933,11 @@ async function handleExport() {
 
         // All Selections
         const allWs = workbook.addWorksheet('All Selections');
-        const headerRow = allWs.addRow(selectionCols);
+        const headerRow = allWs.addRow(['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders]);
         headerRow.eachCell(cell => { cell.font = { bold: true }; });
         State.selectedItems.forEach(item => {
-            const row = selectionCols.map(col => {
+            const row = ['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders].map(col => {
+                if (col === 'Sheet') return item.sheet || '';
                 if (col === 'Room') return item.room || '';
                 if (col === '_rowNumber') return item._rowNumber || '';
                 if (col === 'Quantity') return item.quantity || 1;
@@ -815,7 +947,7 @@ async function handleExport() {
         });
 
         // Auto-size
-        for (let i = 1; i <= selectionCols.length; i++) {
+        for (let i = 1; i <= ['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders].length; i++) {
             const col = allWs.getColumn(i);
             let max = 10;
             col.eachCell({ includeEmpty: true }, (cell) => {
@@ -825,40 +957,57 @@ async function handleExport() {
             col.width = Math.min(Math.max(max + 2, 10), 60);
         }
 
-        // Per-room
-        const grouped = {};
-        State.rooms.forEach(r => grouped[r] = []);
-        grouped['Unassigned'] = [];
-        State.selectedItems.forEach(it => {
-            const key = it.room && grouped[it.room] ? it.room : 'Unassigned';
-            grouped[key].push(it);
+        // Per-sheet, then per-room
+        const sheetGroups = {};
+        State.sheetNames.forEach(sheet => {
+            sheetGroups[sheet] = {};
+            State.rooms.forEach(r => sheetGroups[sheet][r] = []);
+            sheetGroups[sheet]['Unassigned'] = [];
         });
 
-        Object.keys(grouped).forEach(roomName => {
-            const items = grouped[roomName];
-            if (!items?.length) return;
+        State.selectedItems.forEach(it => {
+            const sheet = it.sheet || State.activeSheet;
+            if (!sheetGroups[sheet]) {
+                sheetGroups[sheet] = {};
+                State.rooms.forEach(r => sheetGroups[sheet][r] = []);
+                sheetGroups[sheet]['Unassigned'] = [];
+            }
+            const room = it.room && sheetGroups[sheet][it.room] ? it.room : 'Unassigned';
+            sheetGroups[sheet][room].push(it);
+        });
 
-            const sheetName = String(roomName).replace(/[\/\\\?\*\[\]:]/g, '').slice(0, 31) || 'Sheet';
-            const ws = workbook.addWorksheet(sheetName);
+        Object.keys(sheetGroups).forEach(sheetName => {
+            const roomsInSheet = sheetGroups[sheetName];
+            const sheetNameSafe = String(sheetName).replace(/[\/\\\?\*\[\]:]/g, '').slice(0, 31) || 'Sheet';
+            const ws = workbook.addWorksheet(sheetNameSafe);
 
-            const subsections = {};
-            items.forEach(it => {
-                const ss = it.subsection || 'Subsection 1';
-                if (!subsections[ss]) subsections[ss] = [];
-                subsections[ss].push(it);
-            });
+            // Add header row with sheet name, house name, and floor plan
+            const headerText = `${sheetName} - ${State.houseName || 'N/A'} - ${State.floorPlan || 'N/A'}`;
+            const headerRow = ws.addRow([headerText]);
+            ws.mergeCells(headerRow.number, 1, headerRow.number, selectionCols.length);
+            const headerCell = ws.getCell(headerRow.number, 1);
+            headerCell.font = { bold: true, size: 12 };
+            headerCell.alignment = { horizontal: 'left', vertical: 'middle' };
+            ws.getRow(headerRow.number).height = 25;
+            ws.addRow([]); // Spacing row
 
-            Object.keys(subsections).sort().forEach(ss => {
-                const titleRow = ws.addRow([ss]);
+            Object.keys(roomsInSheet).forEach(roomName => {
+                const items = roomsInSheet[roomName];
+                if (!items?.length) return;
+
+                // Room header
+                const titleRow = ws.addRow([roomName]);
                 ws.mergeCells(titleRow.number, 1, titleRow.number, selectionCols.length);
                 const cell = ws.getCell(titleRow.number, 1);
                 cell.font = { bold: true };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6F6D5' } };
 
+                // Column headers
                 const hdr = ws.addRow(selectionCols);
                 hdr.eachCell(c => { c.font = { bold: true }; });
 
-                subsections[ss].forEach(item => {
+                // Room items
+                items.forEach(item => {
                     const row = selectionCols.map(col => {
                         if (col === 'Room') return item.room || '';
                         if (col === '_rowNumber') return item._rowNumber || '';
@@ -867,9 +1016,10 @@ async function handleExport() {
                     });
                     ws.addRow(row);
                 });
-                ws.addRow([]);
+                ws.addRow([]); // Spacing
             });
 
+            // Auto-size columns
             for (let i = 1; i <= selectionCols.length; i++) {
                 const col = ws.getColumn(i);
                 let max = 10;

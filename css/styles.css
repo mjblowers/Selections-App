@@ -9,7 +9,7 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #1a1a1a;
     min-height: 100vh;
-    display: flex;
+    display: flex; 
     justify-content: center;
     align-items: center;
     padding: 20px;
@@ -480,19 +480,58 @@ select:focus {
 .room-tabs {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     min-width: 120px;
+}
+
+.sheet-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+}
+
+.sheet-tab-btn {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    height: 36px;
+    display: flex;
+    align-items: center;
+}
+
+.sheet-tab-btn:hover {
+    border-color: #667eea;
+    background: #f0f2ff;
+}
+
+.sheet-tab-btn.active {
+    background: #667eea;
+    color: #fff;
+    border-color: #667eea;
+    font-weight: 600;
 }
 
 .room-tab-btn {
     padding: 8px 10px;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid #ddd;
     background: #fff;
     cursor: pointer;
     font-size: 13px;
     transition: all 0.3s;
     text-align: left;
+    height: 36px;
+    display: flex;
+    align-items: center;
 }
 
 .room-tab-btn:hover {

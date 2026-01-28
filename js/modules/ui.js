@@ -29,6 +29,7 @@ window.UI = {
             
             // Row selection
             selectorSection: document.getElementById('selectorSection'),
+            sheetSelect: document.getElementById('sheetSelect'),
             rowSelect: document.getElementById('rowSelect'),
             subsectionSelect: document.getElementById('subsectionSelect'),
             confirmSelectionBtn: document.getElementById('confirmSelectionBtn'),
@@ -74,6 +75,27 @@ window.UI = {
     },
 
     /**
+     * Populate sheet dropdown
+     */
+    populateSheetDropdown(sheetSelect, sheetNames, activeSheet) {
+        console.log('populateSheetDropdown called with:', sheetNames, activeSheet);
+        sheetSelect.innerHTML = '<option value="">-- Select Sheet --</option>';
+        sheetNames.forEach(sheetName => {
+            const option = document.createElement('option');
+            option.value = sheetName;
+            option.textContent = sheetName;
+            if (sheetName === activeSheet) {
+                option.selected = true;
+            }
+            sheetSelect.appendChild(option);
+        });
+        // Show dropdown only if there are multiple sheets
+        const shouldShow = sheetNames.length > 1;
+        sheetSelect.style.display = shouldShow ? 'block' : 'none';
+        console.log('Sheet dropdown display set to:', sheetSelect.style.display, 'num sheets:', sheetNames.length);
+    },
+
+    /**
      * Populate row dropdown
      */
     populateRowDropdown(rowSelect, headers, spreadsheetData) {
@@ -81,7 +103,7 @@ window.UI = {
         spreadsheetData.forEach((row, index) => {
             const option = document.createElement('option');
             option.value = index;
-            const displayValues = headers.slice(0, 3).map(h => row[h]).filter(v => v !== '');
+            const displayValues = headers.slice(0, 10).map(h => row[h] !== undefined && row[h] !== '' ? row[h] : 'NULL');
             option.textContent = `Row ${row._rowNumber}: ${displayValues.join(' - ')}`;
             rowSelect.appendChild(option);
         });
@@ -120,6 +142,45 @@ window.UI = {
             item.appendChild(label);
             item.appendChild(value);
             detailsContent.appendChild(item);
+        });
+    },
+
+    /**
+     * Render sheet tabs
+     */
+    renderSheetTabs(sheetNames, activeSheet, onSheetChange, selectedItems = []) {
+        const sheetTabsContainer = document.getElementById('sheetTabs');
+        if (!sheetTabsContainer) return;
+
+        sheetTabsContainer.innerHTML = '';
+
+        sheetNames.forEach(sheetName => {
+            // Count items for this sheet
+            const count = selectedItems.filter(item => item.sheet === sheetName).length;
+            
+            const btn = document.createElement('button');
+            btn.className = 'sheet-tab-btn';
+            btn.textContent = sheetName + (count ? ` (${count})` : '');
+            btn.dataset.sheet = sheetName;
+            
+            if (sheetName === activeSheet) {
+                btn.classList.add('active');
+            }
+
+            btn.addEventListener('click', () => {
+                // Remove active class from all buttons
+                document.querySelectorAll('.sheet-tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+                // Add active class to clicked button
+                btn.classList.add('active');
+                // Call the handler
+                if (onSheetChange) {
+                    onSheetChange(sheetName);
+                }
+            });
+
+            sheetTabsContainer.appendChild(btn);
         });
     },
 
