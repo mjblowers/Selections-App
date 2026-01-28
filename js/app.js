@@ -37,6 +37,9 @@ async function initApp() {
         els = window.UI.getElements();
     }
     
+    // Initialize dark mode
+    initDarkMode();
+    
     // Diagnostic: Check if sheetSelect exists
     const versionCheck = document.getElementById('versionCheck');
     const sheetSelectExists = !!document.getElementById('sheetSelect');
@@ -151,6 +154,32 @@ function saveState() {
     } catch (err) {
         console.error('Failed to save state:', err);
     }
+}
+
+/**
+ * Initialize Dark Mode
+ */
+function initDarkMode() {
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (!darkModeToggle) return;
+
+    // Load dark mode preference from localStorage
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+    }
+
+    // Add click listener to toggle button
+    darkModeToggle.addEventListener('click', toggleDarkMode);
+}
+
+/**
+ * Toggle Dark Mode
+ */
+function toggleDarkMode() {
+    const body = document.body;
+    const isDarkMode = body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', isDarkMode);
 }
 
 /**
@@ -419,6 +448,25 @@ function createItemElement(item) {
     };
     quantityContainer.appendChild(quantityInput);
 
+    // Notes input
+    const notesContainer = document.createElement('div');
+    notesContainer.className = 'notes-container';
+    const notesLabel = document.createElement('label');
+    notesLabel.textContent = 'Notes:';
+    notesLabel.style.fontSize = '12px';
+    notesLabel.style.marginBottom = '2px';
+    const notesInput = document.createElement('input');
+    notesInput.type = 'text';
+    notesInput.className = 'notes-input';
+    notesInput.placeholder = 'Add notes...';
+    notesInput.value = item.notes || '';
+    notesInput.onchange = () => {
+        item.notes = notesInput.value;
+        saveState();
+    };
+    notesContainer.appendChild(notesLabel);
+    notesContainer.appendChild(notesInput);
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.textContent = 'Delete';
@@ -435,6 +483,7 @@ function createItemElement(item) {
 
     itemDiv.appendChild(content);
     itemDiv.appendChild(quantityContainer);
+    itemDiv.appendChild(notesContainer);
     itemDiv.appendChild(deleteBtn);
     return itemDiv;
 }
@@ -919,7 +968,7 @@ async function handleExport() {
         }
 
         const dataHeaders = State.headers.slice().filter(k => k !== 'subsection' && k !== 'sheet');
-        const selectionCols = ['Room', '_rowNumber', 'Quantity', ...dataHeaders];
+        const selectionCols = ['Room', '_rowNumber', 'Quantity', ...dataHeaders, 'Notes'];
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Selection App';
@@ -933,14 +982,15 @@ async function handleExport() {
 
         // All Selections
         const allWs = workbook.addWorksheet('All Selections');
-        const headerRow = allWs.addRow(['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders]);
+        const headerRow = allWs.addRow(['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders, 'Notes']);
         headerRow.eachCell(cell => { cell.font = { bold: true }; });
         State.selectedItems.forEach(item => {
-            const row = ['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders].map(col => {
+            const row = ['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders, 'Notes'].map(col => {
                 if (col === 'Sheet') return item.sheet || '';
                 if (col === 'Room') return item.room || '';
                 if (col === '_rowNumber') return item._rowNumber || '';
                 if (col === 'Quantity') return item.quantity || 1;
+                if (col === 'Notes') return item.notes || '';
                 return item[col] ?? '';
             });
             allWs.addRow(row);
@@ -1012,6 +1062,7 @@ async function handleExport() {
                         if (col === 'Room') return item.room || '';
                         if (col === '_rowNumber') return item._rowNumber || '';
                         if (col === 'Quantity') return item.quantity || 1;
+                        if (col === 'Notes') return item.notes || '';
                         return item[col] ?? '';
                     });
                     ws.addRow(row);
