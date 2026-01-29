@@ -319,9 +319,38 @@ body.dark-mode .dark-mode-toggle:hover {
 .house-row {
     display: flex;
     gap: 10px;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 20px;
     flex-wrap: wrap;
+}
+
+.house-row #houseNameInput {
+    flex: 1;
+    min-width: 200px;
+}
+
+.house-row #floorPlanSelect {
+    min-width: 180px;
+}
+
+.house-action-btn {
+    background: var(--button-bg);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+    flex-shrink: 0;
+}
+
+.house-action-btn:hover {
+    background: var(--button-hover);
 }
 
 .house-input {
@@ -414,7 +443,19 @@ body.dark-mode .dark-mode-toggle:hover {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-width: 180px;
+    margin-bottom: 20px;
+}
+
+.spec-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spec-header .spec-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .spec-inputs {

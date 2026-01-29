@@ -390,6 +390,65 @@ function renderSelectedItems() {
         title.textContent = roomName;
         contentDiv.appendChild(title);
 
+        // Add subsection input for this room
+        const subsectionContainer = document.createElement('div');
+        subsectionContainer.style.cssText = 'display: flex; gap: 8px; margin-bottom: 16px; align-items: center;';
+        
+        const subsectionInput = document.createElement('input');
+        subsectionInput.type = 'text';
+        subsectionInput.placeholder = 'Add custom subsection (optional)';
+        subsectionInput.style.cssText = 'flex: 1; padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;';
+        subsectionInput.value = State.roomSubsections[roomName] || '';
+        subsectionInput.disabled = Boolean(State.roomSubsections[roomName]);
+        
+        // Update input style if already has a subsection
+        if (State.roomSubsections[roomName]) {
+            subsectionInput.style.borderColor = '#2ecc71';
+            subsectionInput.style.backgroundColor = '#f0fff4';
+        }
+        
+        const subsectionBtn = document.createElement('button');
+        subsectionBtn.className = 'house-action-btn';
+        subsectionBtn.title = State.roomSubsections[roomName] ? 'Edit subsection' : 'Add subsection';
+        subsectionBtn.textContent = State.roomSubsections[roomName] ? '✕' : '✓';
+        subsectionBtn.style.cssText = 'background: #667eea; color: white; border: none; width: 40px; height: 40px; border-radius: 6px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;';
+        subsectionBtn.type = 'button';
+        
+        subsectionBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (State.roomSubsections[roomName]) {
+                // Already set - allow editing
+                subsectionInput.disabled = false;
+                subsectionInput.style.borderColor = '#ddd';
+                subsectionInput.style.backgroundColor = 'white';
+                subsectionBtn.textContent = '✓';
+                subsectionBtn.title = 'Add subsection';
+                subsectionInput.focus();
+                subsectionInput.select();
+            } else {
+                // Not set - confirm entry
+                const subsectionText = subsectionInput.value.trim();
+                if (subsectionText) {
+                    State.roomSubsections[roomName] = subsectionText;
+                    subsectionInput.disabled = true;
+                    subsectionInput.style.borderColor = '#2ecc71';
+                    subsectionInput.style.backgroundColor = '#f0fff4';
+                    subsectionBtn.textContent = '✕';
+                    subsectionBtn.title = 'Edit subsection';
+                    console.log('Subsection saved for', roomName, ':', subsectionText);
+                } else {
+                    showError('Please enter a subsection name');
+                }
+            }
+            console.log('Current roomSubsections:', State.roomSubsections);
+        });
+        
+        subsectionContainer.appendChild(subsectionInput);
+        subsectionContainer.appendChild(subsectionBtn);
+        contentDiv.appendChild(subsectionContainer);
+
         const items = roomsInCurrentSheet[roomName] || [];
         if (!items.length) {
             const empty = document.createElement('div');
@@ -509,8 +568,8 @@ function setHouseNameLocked(locked) {
     const editHouseBtn = document.getElementById('editHouseBtn');
 
     if (houseNameInput) houseNameInput.disabled = locked;
-    if (confirmHouseBtn) confirmHouseBtn.style.display = locked ? 'none' : 'inline-block';
-    if (editHouseBtn) editHouseBtn.style.display = locked ? 'inline-block' : 'none';
+    if (confirmHouseBtn) confirmHouseBtn.style.display = locked ? 'none' : 'flex';
+    if (editHouseBtn) editHouseBtn.style.display = locked ? 'flex' : 'none';
 }
 
 /**
@@ -1157,9 +1216,28 @@ async function handleExport() {
                 cell.font = { bold: true };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6F6D5' } };
 
+                // Custom subsection if it exists
+                if (State.roomSubsections && State.roomSubsections[roomName]) {
+                    const customSubRow = ws.addRow([State.roomSubsections[roomName]]);
+                    ws.mergeCells(customSubRow.number, 1, customSubRow.number, selectionCols.length);
+                    const customCell = ws.getCell(customSubRow.number, 1);
+                    customCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    customCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
+                    customCell.alignment = { horizontal: 'left', vertical: 'middle' };
+                }
+
                 // Column headers
-                const hdr = ws.addRow(selectionCols);
-                hdr.eachCell(c => { c.font = { bold: true }; });
+                const hdr = ws.addRow(selectionCols.map(col => {
+                    // Capitalize: split by space/underscore, capitalize each word
+                    return col.split(/[\s_]+/)
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                        .join(' ');
+                }));
+                hdr.eachCell(c => {
+                    c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
+                    c.alignment = { horizontal: 'center', vertical: 'middle' };
+                });
 
                 // Room items
                 items.forEach(item => {

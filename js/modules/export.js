@@ -87,26 +87,20 @@ const ExcelExport = {
             const sheetName = this.sanitizeSheetName(roomName);
             const ws = workbook.addWorksheet(sheetName);
 
-            // Group by subsection
-            const subsectionGroups = {};
-            items.forEach(it => {
-                const ss = it.subsection || 'Subsection 1';
-                if (!subsectionGroups[ss]) subsectionGroups[ss] = [];
-                subsectionGroups[ss].push(it);
-            });
-
-            // Render subsections
-            Object.keys(subsectionGroups).sort().forEach(subsection => {
-                // Subsection title row
-                const titleRow = ws.addRow([subsection]);
-                this.styleSectionTitle(ws, titleRow, selectionCols.length);
-
-                // Header row
+            // Check if this room has a custom subsection
+            const customSubsection = state.roomSubsections && state.roomSubsections[roomName];
+            
+            // If custom subsection exists, add it as the first row with grey background
+            if (customSubsection) {
+                const customRow = ws.addRow([customSubsection]);
+                this.styleCustomSubsection(ws, customRow, selectionCols.length);
+                
+                // Header row after custom subsection
                 const hdr = ws.addRow(selectionCols);
                 this.styleBoldHeader(hdr);
-
-                // Items
-                subsectionGroups[subsection].forEach(item => {
+                
+                // Add all items without subsection grouping
+                items.forEach(item => {
                     const row = selectionCols.map(col => {
                         if (col === 'Room') return item.room || '';
                         if (col === '_rowNumber') return item._rowNumber || '';
@@ -114,13 +108,61 @@ const ExcelExport = {
                     });
                     ws.addRow(row);
                 });
+            } else {
+                // Group by subsection (original behavior when no custom subsection)
+                const subsectionGroups = {};
+                items.forEach(it => {
+                    const ss = it.subsection || 'Subsection 1';
+                    if (!subsectionGroups[ss]) subsectionGroups[ss] = [];
+                    subsectionGroups[ss].push(it);
+                });
 
-                // Spacer
-                ws.addRow([]);
-            });
+                // Render subsections
+                Object.keys(subsectionGroups).sort().forEach(subsection => {
+                    // Subsection title row
+                    const titleRow = ws.addRow([subsection]);
+                    this.styleSectionTitle(ws, titleRow, selectionCols.length);
+
+                    // Header row
+                    const hdr = ws.addRow(selectionCols);
+                    this.styleBoldHeader(hdr);
+
+                    // Items
+                    subsectionGroups[subsection].forEach(item => {
+                        const row = selectionCols.map(col => {
+                            if (col === 'Room') return item.room || '';
+                            if (col === '_rowNumber') return item._rowNumber || '';
+                            return item[col] !== undefined ? item[col] : '';
+                        });
+                        ws.addRow(row);
+                    });
+
+                    // Spacer
+                    ws.addRow([]);
+                });
+            }
 
             this.autosizeColumns(ws, selectionCols.length);
         });
+    },
+
+    /**
+     * Style custom subsection row (grey background + white font)
+     */
+    styleCustomSubsection(ws, row, colCount) {
+        try {
+            ws.mergeCells(row.number, 1, row.number, colCount);
+            const cell = ws.getCell(row.number, 1);
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; // White text
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF808080' }, // Grey background
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        } catch (e) {
+            // ignore
+        }
     },
 
     /**

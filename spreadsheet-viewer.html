@@ -30,48 +30,43 @@
 
         <!-- House name + Floor Plan row -->
         <div class="house-row">
-            <div class="house-input">
-                <input id="houseNameInput" type="text" placeholder="Enter house name" />
-                <button id="confirmHouseBtn" type="button" class="file-btn" style="padding:8px 10px;font-size:13px;" onclick="handleConfirmHouse(); return false;">Confirm House</button>
-                <button id="editHouseBtn" type="button" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;" onclick="document.getElementById('houseNameInput').disabled = false; this.style.display = 'none'; document.getElementById('confirmHouseBtn').style.display = 'inline-block'; return false;">Edit</button>
-            </div>
+            <input id="houseNameInput" type="text" placeholder="Enter house name" />
             <select id="floorPlanSelect" class="floor-plan-select" aria-label="Floor Plan">
                 <option value="">-- Floor Plan --</option>
                 <option value="Olympia">Olympia</option>
                 <option value="Oakley">Oakley</option>
                 <option value="MGM Grand">MGM Grand</option>
             </select>
+            <button id="confirmHouseBtn" class="house-action-btn" title="Confirm house">✓</button>
+            <button id="editHouseBtn" class="house-action-btn" style="display:none;" title="Edit house">✕</button>
         </div>
 
-        <div class="beds-and-extra-rooms-row">
-            <div class="beds-baths-wrapper">
-                <label style="font-weight:600;">Beds / Baths</label>
-                <div style="display:flex; gap:8px;">
-                    <input id="bedsInput" type="number" min="0" placeholder="Beds" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
-                    <input id="bathsInput" type="number" min="0" placeholder="Baths" style="padding:8px;width:80px;border-radius:6px;border:2px solid #ddd;" />
+        <!-- Beds/Baths Configuration -->
+        <div class="spec-block">
+            <div class="spec-header">
+                <label>Beds / Baths</label>
+                <div class="spec-inputs">
+                    <input id="bedsInput" type="number" min="0" placeholder="Beds" />
+                    <input id="bathsInput" type="number" min="0" placeholder="Baths" />
+                    <button id="setBedsBtn" class="house-action-btn" title="Confirm">✓</button>
+                    <button id="editBedsBtn" class="house-action-btn" style="display:none;" title="Edit">✕</button>
                 </div>
             </div>
-
-            <div class="extra-rooms-section">
-                <label style="font-weight:600;">Extra Rooms</label>
-                <div class="toggle-group" id="extraRoomsGroup">
-                    <button type="button" class="toggle-btn" data-room="Office">Office</button>
-                    <button type="button" class="toggle-btn" data-room="Den">Den</button>
-                    <button type="button" class="toggle-btn" data-room="Living">Living</button>
-                    <button type="button" class="toggle-btn" data-room="Dining">Dining</button>
-                    <button type="button" class="toggle-btn" data-room="Family">Family</button>
-                    <button type="button" class="toggle-btn" data-room="Garage">Garage</button>
-                    <button type="button" class="toggle-btn" data-room="Kitchen">Kitchen</button>
-                    <button type="button" class="toggle-btn" data-room="Pantry">Pantry</button>
-                    <button type="button" class="toggle-btn" data-room="Laundry">Laundry</button>
-                    <button type="button" class="toggle-btn" data-room="Master Bath">Master Bath</button>
-                </div>
+            
+            <!-- Extra Rooms Toggle -->
+            <label style="margin-top:12px;">Extra Rooms</label>
+            <div class="toggle-group" id="extraRoomsGroup">
+                <button type="button" class="toggle-btn" data-room="Office">Office</button>
+                <button type="button" class="toggle-btn" data-room="Den">Den</button>
+                <button type="button" class="toggle-btn" data-room="Living">Living</button>
+                <button type="button" class="toggle-btn" data-room="Dining">Dining</button>
+                <button type="button" class="toggle-btn" data-room="Family">Family</button>
+                <button type="button" class="toggle-btn" data-room="Garage">Garage</button>
+                <button type="button" class="toggle-btn" data-room="Kitchen">Kitchen</button>
+                <button type="button" class="toggle-btn" data-room="Pantry">Pantry</button>
+                <button type="button" class="toggle-btn" data-room="Laundry">Laundry</button>
+                <button type="button" class="toggle-btn" data-room="Master Bath">Master Bath</button>
             </div>
-        </div>
-
-        <div class="beds-baths-controls">
-            <button id="setBedsBtn" type="button" class="file-btn" style="padding:8px 10px;font-size:13px;" onclick="handleSetBedsBaths(); return false;">Set House Layout</button>
-            <button id="editBedsBtn" type="button" class="file-btn secondary" style="display:none;padding:8px 10px;font-size:13px;">Edit House Layout</button>
         </div>
 
         <div class="selector-section" id="selectorSection">

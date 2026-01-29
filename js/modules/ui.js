@@ -234,6 +234,38 @@ window.UI = {
             title.textContent = roomName;
             contentDiv.appendChild(title);
 
+            // Add subsection input for this room
+            const subsectionContainer = document.createElement('div');
+            subsectionContainer.className = 'room-subsection-input';
+            subsectionContainer.style.cssText = 'display: flex; gap: 8px; margin-bottom: 16px; align-items: center;';
+            
+            const subsectionInput = document.createElement('input');
+            subsectionInput.type = 'text';
+            subsectionInput.placeholder = 'Add custom subsection (optional)';
+            subsectionInput.style.cssText = 'flex: 1; padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;';
+            subsectionInput.value = state.roomSubsections[roomName] || '';
+            
+            const subsectionBtn = document.createElement('button');
+            subsectionBtn.className = 'house-action-btn';
+            subsectionBtn.title = 'Add subsection';
+            subsectionBtn.textContent = '✓';
+            subsectionBtn.style.cssText = 'background: #667eea; color: white; border: none; width: 40px; height: 40px; border-radius: 6px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;';
+            
+            subsectionBtn.onclick = () => {
+                const subsectionText = subsectionInput.value.trim();
+                if (subsectionText) {
+                    state.roomSubsections[roomName] = subsectionText;
+                    subsectionInput.style.borderColor = '#2ecc71';
+                } else {
+                    delete state.roomSubsections[roomName];
+                    subsectionInput.style.borderColor = '#ddd';
+                }
+            };
+            
+            subsectionContainer.appendChild(subsectionInput);
+            subsectionContainer.appendChild(subsectionBtn);
+            contentDiv.appendChild(subsectionContainer);
+
             const items = grouped[roomName] || [];
             if (!items || items.length === 0) {
                 const emptyNote = document.createElement('div');

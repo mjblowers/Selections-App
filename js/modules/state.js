@@ -27,6 +27,7 @@ window.State = {
     selectedItems: [],
     currentSelectedRow: null,
     activeRoomTab: null,
+    roomSubsections: {}, // Store custom subsection names for each room
     
     // UI state
     fileMode: 'scratch', // 'scratch' or 'existing'
@@ -52,6 +53,7 @@ window.resetState = function() {
     window.State.selectedItems = [];
     window.State.currentSelectedRow = null;
     window.State.activeRoomTab = null;
+    window.State.roomSubsections = {};
     window.State.fileMode = 'scratch';
     window.State.rooms = [...window.State.baseRooms];
 }
