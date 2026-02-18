@@ -507,28 +507,31 @@ function createItemElement(item) {
 
     // Quantity input
     const quantityContainer = document.createElement('div');
-    quantityContainer.className = 'quantity-container';
+    quantityContainer.className = 'item-field-container';
+    const quantityLabel = document.createElement('label');
+    quantityLabel.textContent = 'Qty:';
+    quantityLabel.className = 'item-field-label';
     const quantityInput = document.createElement('input');
     quantityInput.type = 'number';
-    quantityInput.className = 'quantity-input';
+    quantityInput.className = 'item-field-input quantity-input';
     quantityInput.value = item.quantity || 1;
     quantityInput.min = '1';
     quantityInput.onchange = () => {
         item.quantity = parseInt(quantityInput.value) || 1;
         saveState();
     };
+    quantityContainer.appendChild(quantityLabel);
     quantityContainer.appendChild(quantityInput);
 
     // Notes input
     const notesContainer = document.createElement('div');
-    notesContainer.className = 'notes-container';
+    notesContainer.className = 'item-field-container';
     const notesLabel = document.createElement('label');
     notesLabel.textContent = 'Notes:';
-    notesLabel.style.fontSize = '12px';
-    notesLabel.style.marginBottom = '2px';
+    notesLabel.className = 'item-field-label';
     const notesInput = document.createElement('input');
     notesInput.type = 'text';
-    notesInput.className = 'notes-input';
+    notesInput.className = 'item-field-input notes-input';
     notesInput.placeholder = 'Add notes...';
     notesInput.value = item.notes || '';
     notesInput.onchange = () => {
@@ -537,6 +540,97 @@ function createItemElement(item) {
     };
     notesContainer.appendChild(notesLabel);
     notesContainer.appendChild(notesInput);
+
+    // Grout dropdown
+    const groutContainer = document.createElement('div');
+    groutContainer.className = 'item-field-container';
+    const groutLabel = document.createElement('label');
+    groutLabel.textContent = 'Grout:';
+    groutLabel.className = 'item-field-label';
+    const groutSelect = document.createElement('select');
+    groutSelect.className = 'item-field-input item-field-select';
+    groutSelect.innerHTML = `
+        <option value="">--</option>
+        <option value="Grout1">Grout1</option>
+        <option value="Grout2">Grout2</option>
+        <option value="Grout3">Grout3</option>
+    `;
+    groutSelect.value = item.grout || '';
+    groutSelect.onchange = () => {
+        item.grout = groutSelect.value;
+        saveState();
+    };
+    groutContainer.appendChild(groutLabel);
+    groutContainer.appendChild(groutSelect);
+
+    // Trim dropdown
+    const trimContainer = document.createElement('div');
+    trimContainer.className = 'item-field-container';
+    const trimLabel = document.createElement('label');
+    trimLabel.textContent = 'Trim:';
+    trimLabel.className = 'item-field-label';
+    const trimSelect = document.createElement('select');
+    trimSelect.className = 'item-field-input item-field-select';
+    trimSelect.innerHTML = `
+        <option value="">--</option>
+        <option value="Trim1">Trim1</option>
+        <option value="Trim2">Trim2</option>
+        <option value="Trim3">Trim3</option>
+    `;
+    trimSelect.value = item.trim || '';
+    trimSelect.onchange = () => {
+        item.trim = trimSelect.value;
+        saveState();
+    };
+    trimContainer.appendChild(trimLabel);
+    trimContainer.appendChild(trimSelect);
+
+    // Loc input
+    const locContainer = document.createElement('div');
+    locContainer.className = 'item-field-container';
+    const locLabel = document.createElement('label');
+    locLabel.textContent = 'Loc:';
+    locLabel.className = 'item-field-label';
+    const locInput = document.createElement('input');
+    locInput.type = 'text';
+    locInput.className = 'item-field-input loc-input';
+    locInput.placeholder = 'Location...';
+    locInput.value = item.loc || '';
+    locInput.onchange = () => {
+        item.loc = locInput.value;
+        locInput.classList.remove('field-error');
+        locError.style.display = 'none';
+        saveState();
+    };
+    const locError = document.createElement('span');
+    locError.className = 'field-error-msg';
+    locError.textContent = 'Required';
+    locError.style.display = 'none';
+    locContainer.appendChild(locLabel);
+    locContainer.appendChild(locInput);
+    locContainer.appendChild(locError);
+
+    // Confirm button (checkmark)
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'confirm-item-btn';
+    confirmBtn.textContent = '✓';
+    confirmBtn.title = 'Confirm item';
+    confirmBtn.onclick = () => {
+        if (!locInput.value.trim()) {
+            locInput.classList.add('field-error');
+            locError.style.display = 'inline';
+            locInput.focus();
+            return;
+        }
+        locInput.classList.remove('field-error');
+        locError.style.display = 'none';
+        item.confirmed = true;
+        confirmBtn.classList.add('confirmed');
+        saveState();
+    };
+    if (item.confirmed) {
+        confirmBtn.classList.add('confirmed');
+    }
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
@@ -552,10 +646,19 @@ function createItemElement(item) {
         }
     };
 
+    // Controls row container
+    const controlsRow = document.createElement('div');
+    controlsRow.className = 'item-controls-row';
+    controlsRow.appendChild(locContainer);
+    controlsRow.appendChild(groutContainer);
+    controlsRow.appendChild(trimContainer);
+    controlsRow.appendChild(quantityContainer);
+    controlsRow.appendChild(notesContainer);
+    controlsRow.appendChild(confirmBtn);
+    controlsRow.appendChild(deleteBtn);
+
     itemDiv.appendChild(content);
-    itemDiv.appendChild(quantityContainer);
-    itemDiv.appendChild(notesContainer);
-    itemDiv.appendChild(deleteBtn);
+    itemDiv.appendChild(controlsRow);
     return itemDiv;
 }
 
@@ -1072,11 +1175,17 @@ function handleConfirmSelection() {
         }
     }
     
-    // Add the item with current sheet and room (no subsection)
-    State.selectedItems.push({ ...selectedRow, sheet: State.activeSheet, room: targetRoom });
+    // Add the item with current sheet and room, include grout/trim if present
+    const groutSelect = document.getElementById('groutSelect');
+    const trimSelect = document.getElementById('trimSelect');
+    const grout = groutSelect ? groutSelect.value : '';
+    const trim = trimSelect ? trimSelect.value : '';
+    State.selectedItems.push({ ...selectedRow, sheet: State.activeSheet, room: targetRoom, grout, trim });
 
     State.activeRoomTab = targetRoom;
     renderSelectedItems();
+    if (groutSelect) groutSelect.value = '';
+    if (trimSelect) trimSelect.value = '';
     saveState();
 }
 
@@ -1085,6 +1194,8 @@ function handleConfirmSelection() {
  */
 function handleAssignToRoom() {
     const roomSelect = document.getElementById('roomSelect');
+    const groutSelect = document.getElementById('groutSelect');
+    const trimSelect = document.getElementById('trimSelect');
     const rowDetails = document.getElementById('rowDetails');
     const rowSelect = document.getElementById('rowSelect');
 
@@ -1096,16 +1207,19 @@ function handleAssignToRoom() {
         showError('Room selector not found.');
         return;
     }
-    
+
     const room = roomSelect.value;
     if (!room) {
         showError('Please choose a room.');
         return;
     }
 
-    const existing = State.selectedItems.findIndex(it => it._rowNumber === State.currentSelectedRow._rowNumber && it.room === room && it.sheet === State.activeSheet);
+    const grout = groutSelect ? groutSelect.value : '';
+    const trim = trimSelect ? trimSelect.value : '';
+
+    const existing = State.selectedItems.findIndex(it => it._rowNumber === State.currentSelectedRow._rowNumber && it.room === room && it.sheet === State.activeSheet && it.grout === grout && it.trim === trim);
     if (existing === -1) {
-        State.selectedItems.push({ ...State.currentSelectedRow, sheet: State.activeSheet, room });
+        State.selectedItems.push({ ...State.currentSelectedRow, sheet: State.activeSheet, room, grout, trim });
     }
 
     renderSelectedItems();
@@ -1113,6 +1227,8 @@ function handleAssignToRoom() {
     if (rowDetails) rowDetails.classList.remove('active');
     if (rowSelect) rowSelect.value = '';
     if (roomSelect) roomSelect.value = '';
+    if (groutSelect) groutSelect.value = '';
+    if (trimSelect) trimSelect.value = '';
     saveState();
 }
 
@@ -1131,8 +1247,8 @@ async function handleExport() {
             return;
         }
 
-        const dataHeaders = State.headers.slice().filter(k => k !== 'subsection' && k !== 'sheet');
-        const selectionCols = ['Room', '_rowNumber', 'Quantity', ...dataHeaders, 'Notes'];
+        const dataHeaders = State.headers.slice().filter(k => k !== 'subsection' && k !== 'sheet' && k !== '_rowNumber');
+        const selectionCols = ['Loc', ...dataHeaders, 'Grout', 'Trim', 'Notes'];
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Selection App';
@@ -1146,15 +1262,14 @@ async function handleExport() {
 
         // All Selections
         const allWs = workbook.addWorksheet('All Selections');
-        const headerRow = allWs.addRow(['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders, 'Notes']);
+        const headerRow = allWs.addRow(['Loc', ...dataHeaders, 'Grout', 'Trim', 'Notes']);
         headerRow.eachCell(cell => { cell.font = { bold: true }; });
         State.selectedItems.forEach(item => {
-            const row = ['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders, 'Notes'].map(col => {
-                if (col === 'Sheet') return item.sheet || '';
-                if (col === 'Room') return item.room || '';
-                if (col === '_rowNumber') return item._rowNumber || '';
-                if (col === 'Quantity') return item.quantity || 1;
+            const row = ['Loc', ...dataHeaders, 'Grout', 'Trim', 'Notes'].map(col => {
+                if (col === 'Loc') return item.loc || '';
                 if (col === 'Notes') return item.notes || '';
+                if (col === 'Grout') return item.grout || '';
+                if (col === 'Trim') return item.trim || '';
                 return item[col] ?? '';
             });
             allWs.addRow(row);
@@ -1163,12 +1278,7 @@ async function handleExport() {
         // Auto-size
         for (let i = 1; i <= ['Sheet', 'Room', '_rowNumber', 'Quantity', ...dataHeaders].length; i++) {
             const col = allWs.getColumn(i);
-            let max = 10;
-            col.eachCell({ includeEmpty: true }, (cell) => {
-                const s = String(cell.value ?? '');
-                max = Math.max(max, s.length);
-            });
-            col.width = Math.min(Math.max(max + 2, 10), 60);
+            col.width = 20;
         }
 
         // Per-sheet, then per-room
@@ -1227,12 +1337,7 @@ async function handleExport() {
                 }
 
                 // Column headers
-                const hdr = ws.addRow(selectionCols.map(col => {
-                    // Capitalize: split by space/underscore, capitalize each word
-                    return col.split(/[\s_]+/)
-                        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                        .join(' ');
-                }));
+                const hdr = ws.addRow(selectionCols);
                 hdr.eachCell(c => {
                     c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
@@ -1242,10 +1347,10 @@ async function handleExport() {
                 // Room items
                 items.forEach(item => {
                     const row = selectionCols.map(col => {
-                        if (col === 'Room') return item.room || '';
-                        if (col === '_rowNumber') return item._rowNumber || '';
-                        if (col === 'Quantity') return item.quantity || 1;
+                        if (col === 'Loc') return item.loc || '';
                         if (col === 'Notes') return item.notes || '';
+                        if (col === 'Grout') return item.grout || '';
+                        if (col === 'Trim') return item.trim || '';
                         return item[col] ?? '';
                     });
                     ws.addRow(row);
@@ -1256,12 +1361,7 @@ async function handleExport() {
             // Auto-size columns
             for (let i = 1; i <= selectionCols.length; i++) {
                 const col = ws.getColumn(i);
-                let max = 10;
-                col.eachCell({ includeEmpty: true }, (cell) => {
-                    const s = String(cell.value ?? '');
-                    max = Math.max(max, s.length);
-                });
-                col.width = Math.min(Math.max(max + 2, 10), 60);
+                col.width = 20;
             }
         });
 

@@ -247,10 +247,12 @@ body.dark-mode .dark-mode-toggle:hover {
     background: #e74c3c;
     color: white;
     border: none;
-    padding: 8px 12px;
+    height: 32px;
+    padding: 0 12px;
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.3s;
+    font-size: 13px;
 }
 
 .delete-btn:hover {
@@ -263,18 +265,83 @@ body.dark-mode .dark-mode-toggle:hover {
 }
 
 .quantity-input {
-    width: 60px;
-    padding: 6px 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 13px;
+    width: 50px;
     text-align: center;
 }
 
-.quantity-input:focus {
+/* Item field containers - unified styling for selection row */
+.item-field-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.item-field-label {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+}
+
+.item-field-input {
+    height: 32px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.item-field-input:focus {
     outline: none;
-    border-color: #000;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.item-field-select {
+    min-width: 70px;
+    cursor: pointer;
+}
+
+.notes-input {
+    min-width: 120px;
+}
+
+.loc-input {
+    min-width: 80px;
+    max-width: 100px;
+}
+
+.field-error {
+    border-color: #e74c3c !important;
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
+}
+
+.field-error-msg {
+    color: #e74c3c;
+    font-size: 11px;
+    margin-left: 4px;
+}
+
+.confirm-item-btn {
+    height: 32px;
+    width: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: #27ae60;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.confirm-item-btn:hover {
+    background: #219a52;
+}
+
+.confirm-item-btn.confirmed {
+    background: #1e8449;
+    box-shadow: inset 0 0 0 2px #145a32;
 }
 
 /* Upload Section */
@@ -741,10 +808,16 @@ select:focus {
     border-radius: 6px;
     border-left: 4px solid #000;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 8px;
+    transition: box-shadow 0.3s;
+}
+
+.item-controls-row {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    transition: box-shadow 0.3s;
 }
 
 .selected-item:hover {
@@ -752,8 +825,7 @@ select:focus {
 }
 
 .selected-item-content {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
 }
 
 .selected-item-summary {
@@ -982,6 +1054,16 @@ body.dark-mode .selected-item-content {
 
 body.dark-mode .selected-item-details {
     color: var(--text-secondary);
+}
+
+body.dark-mode .item-field-label {
+    color: var(--text-secondary);
+}
+
+body.dark-mode .item-field-input {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
 }
 
 body.dark-mode .room-tab-btn {

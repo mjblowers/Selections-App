@@ -298,7 +298,7 @@ window.UI = {
             }
 
             roomTabContent.appendChild(contentDiv);
-        });
+        }); 
 
         // Tab switching
         roomTabs.onclick = (e) => {
@@ -313,7 +313,7 @@ window.UI = {
             });
             state.activeRoomTab = newRoom;
         };
-    },
+    },//this function serves as the main renderer for the selected items section, creating dynamic tabs for each room and subsections, and allowing deletion of individual items. It also ensures that the active tab is preserved across updates and that the UI reflects the current state of selected items accurately.
 
     /**
      * Create a single item element
@@ -334,8 +334,16 @@ window.UI = {
         details.className = 'selected-item-details';
         details.textContent = headers.map(h => `${h}: ${item[h]}`).join(' | ');
 
+        // Add Grout and Trim info if present
+        const groutTrim = document.createElement('div');
+        groutTrim.className = 'selected-item-grout-trim';
+        let groutText = item.grout ? `Grout: ${item.grout}` : '';
+        let trimText = item.trim ? `Trim: ${item.trim}` : '';
+        groutTrim.textContent = [groutText, trimText].filter(Boolean).join(' | ');
+
         content.appendChild(summary);
         content.appendChild(details);
+        if (groutTrim.textContent) content.appendChild(groutTrim);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
