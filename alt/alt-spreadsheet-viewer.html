@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Selecappy</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <!-- Standalone Styles -->
+    <link rel="stylesheet" href="css/alt-styles.css" />
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header with Settings Cog -->
+        <div class="header-row">
+            <h1>📋 Selecappy</h1>
+            <button id="settingsCog" class="settings-cog" title="Configure Project" style="display:none;">⚙️</button>
+        </div>
+
+        <!-- Project Configuration Section -->
+        <div id="configSection" class="config-section">
+            <h2>Configure Project</h2>
+            <div class="config-form">
+                <div class="config-field">
+                    <label for="houseNameInput">House Name</label>
+                    <input type="text" id="houseNameInput" placeholder="Enter house name" />
+                </div>
+                <div class="config-row">
+                    <div class="config-field">
+                        <label for="roomsInput">Rooms</label>
+                        <input type="number" id="roomsInput" min="0" placeholder="# of Rooms" />
+                    </div>
+                    <div class="config-field">
+                        <label for="bathsInput">Baths</label>
+                        <input type="number" id="bathsInput" min="0" placeholder="# of Baths" />
+                    </div>
+                </div>
+                <div class="config-field">
+                    <label>Extra Rooms</label>
+                    <div class="config-checkboxes" id="extraRoomsCheckboxes">
+                        <label class="checkbox-label"><input type="checkbox" data-room="Office" /> Office</label>
+                        <label class="checkbox-label"><input type="checkbox" data-room="Den" /> Den</label>
+                        <label class="checkbox-label"><input type="checkbox" data-room="Mudroom" /> Mudroom</label>
+                        <label class="checkbox-label"><input type="checkbox" data-room="Entry" /> Entry</label>
+                        <label class="checkbox-label"><input type="checkbox" data-room="Powder Bath" /> Powder Bath</label>
+                        <label class="checkbox-label"><input type="checkbox" data-room="Pantry" /> Pantry</label>
+                    </div>
+                </div>
+                <button id="acceptConfigBtn" class="btn btn-primary config-accept-btn">✓ Accept</button>
+            </div>
+        </div>
+
+        <!-- Config Display (shown after configuration) -->
+        <div id="configDisplay" class="config-display" style="display:none;">
+            <span id="configDisplayText"></span>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Main Content (hidden until configured) -->
+        <div id="mainContent" style="display:none;">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <button id="importBtn" class="btn btn-primary">Import Spreadsheet</button>
+                <button id="clearBtn" class="btn btn-danger" disabled>Clear Data</button>
+                <button id="exportBtn" class="btn btn-success" disabled>Export to Excel</button>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+            </div>
+
+            <!-- Category Selector -->
+            <div class="category-section">
+                <!-- Product Group Dropdown -->
+                <div class="product-group-selector">
+                    <select id="productGroupSelect" class="product-group-select">
+                        <option value="1">Countertop + Tile + Stone</option>
+                        <option value="2">Product Group 2</option>
+                        <option value="3">Product Group 3</option>
+                        <option value="4">Product Group 4</option>
+                        <option value="5">Product Group 5</option>
+                        <option value="6">Product Group 6</option>
+                    </select>
+                </div>
+                <div id="categoryTabs" class="category-tabs">
+                    <!-- Category tabs rendered dynamically based on product group -->
+                </div>
+                <div id="roomTabs" class="room-tabs">
+                    <!-- Room tabs generated dynamically based on beds/baths -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search imported data to add items..." />
+                <div id="searchDropdown" class="search-dropdown"></div>
+            </div>
+        </div>
+
+        <!-- View Toggle -->
+        <div class="view-toggle">
+            <button id="showAllToggle" class="btn btn-toggle">Show All</button>
+        </div>
+
+        <!-- Column Header Row -->
+        <div id="columnHeaderRow" class="column-header-row"></div>
+
+        <!-- Selected Items for Current Room/Category -->
+        <div id="selectedItemsSection" class="selected-items-section">
+            <div id="selectedItemsList" class="selected-items-list"></div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="statusBar" class="status-bar"></div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <div class="empty-state-icon">📂</div>
+            <div class="empty-state-text">Import a spreadsheet to get started</div>
+        </div>
+    </div>
+
+    <!-- Standalone JavaScript -->
+    <script src="js/alt-app.js"></script>
+</body>
+
+</html>
