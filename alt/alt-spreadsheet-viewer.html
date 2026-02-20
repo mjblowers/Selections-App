@@ -108,9 +108,15 @@
                         <option value="1">Countertop + Tile + Stone</option>
                         <option value="2">Appliances</option>
                         <option value="3">Cabinet</option>
-                        <option value="4">Product Group 4</option>
-                        <option value="5">Product Group 5</option>
-                        <option value="6">Product Group 6</option>
+                        <option value="4">Doors + Trim</option>
+                        <option value="5">Drywall Finish</option>
+                        <option value="6">Fireplace</option>
+                        <option value="7">Flooring</option>
+                        <option value="8">Hardware</option>
+                        <option value="9">Lighting</option>
+                        <option value="10">Mirrors</option>
+                        <option value="11">Paint</option>
+                        <option value="12">Plumbing</option>
                     </select>
                 </div>
                 <!-- Supplier field (shown for Appliances) -->
@@ -134,6 +140,12 @@
 
         <!-- Search Section -->
         <div class="search-section">
+            <div class="sheet-selector-container">
+                <label for="sheetSelect">Import Tab:</label>
+                <select id="sheetSelect" class="sheet-select">
+                    <option value="">-- Import a spreadsheet --</option>
+                </select>
+            </div>
             <div class="search-container">
                 <input type="text" id="searchInput" class="search-input" placeholder="Search imported data to add items..." />
                 <div id="searchDropdown" class="search-dropdown"></div>

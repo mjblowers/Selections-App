@@ -16,6 +16,7 @@ const AltApp = {
         activeRoom: 'Kitchen', // Kitchen, Pantry, Laundry, Master Bath, Powder Bath
         searchQuery: '',
         filteredResults: [],
+        searchDisplayLimit: 10, // How many search results to show
         selectedItems: {}, // Structure: { category: { room: [items] } }
         showAllView: false, // Toggle between room view and all selections view
         applianceSupplier: '', // Supplier name for appliances
@@ -43,9 +44,15 @@ const AltApp = {
         '1': ['Tile', 'Countertops', 'Stone'],
         '2': ['Appliance 1', 'Appliance 2', 'Appliance 3', 'Appliance 4'],
         '3': ['Cabinet 1', 'Cabinet 2', 'Cabinet 3', 'Cabinet 4'],
-        '4': ['Material 1', 'Material 2', 'Material 3', 'Material 4'],
-        '5': ['Material 1', 'Material 2', 'Material 3', 'Material 4'],
-        '6': ['Material 1', 'Material 2', 'Material 3', 'Material 4']
+        '4': ['Doors', 'Trim'],
+        '5': ['Drywall'],
+        '6': ['Fireplace'],
+        '7': ['Flooring'],
+        '8': ['Hardware'],
+        '9': ['Lighting'],
+        '10': ['Mirrors'],
+        '11': ['Paint'],
+        '12': ['Plumbing']
     },
 
     // Column headers per category
@@ -59,10 +66,29 @@ const AltApp = {
         'Appliance 3': ['Item', 'MFR', 'Size', 'Finish', 'Config', 'Sku', 'Qty', 'Notes'],
         'Appliance 4': ['Item', 'MFR', 'Size', 'Finish', 'Config', 'Sku', 'Qty', 'Notes'],
         // Cabinet columns
-        'Cabinet 1': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
-        'Cabinet 2': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
-        'Cabinet 3': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
-        'Cabinet 4': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
+        'Cabinet 1': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer', 'Notes'],
+        'Cabinet 2': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer', 'Notes'],
+        'Cabinet 3': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer', 'Notes'],
+        'Cabinet 4': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer', 'Notes'],
+        // Doors + Trim columns
+        'Doors': ['Item', 'MFR', 'Model', 'Finish', 'Glass Type', 'Size', 'Notes'],
+        'Trim': ['Item', 'Location', 'Detail', 'Material', 'Finish', 'Size', 'Installer', 'Notes'],
+        // Drywall Finish columns
+        'Drywall': ['Location', 'Detail', 'Notes'],
+        // Fireplace columns
+        'Fireplace': ['Item', 'Supplier', 'MFR', 'Name/Size', 'Box AFF', 'Surround Style', 'Mantle', 'Notes'],
+        // Flooring columns
+        'Flooring': ['Location', 'MFR', 'Name/Collection', 'Color', 'SKU', 'Thickness', 'Notes'],
+        // Hardware columns
+        'Hardware': ['Item', 'MFR', 'Name', 'Finish', 'Size', 'SKU', 'Qty', 'Notes'],
+        // Lighting columns
+        'Lighting': ['Item', 'MFR', 'Name/Size/Finish', 'SKU', 'Qty', 'Notes'],
+        // Mirrors columns
+        'Mirrors': ['Location', 'Size', 'Shape', 'Finish', 'Frame Type', 'Qty', 'Standoff', 'Notes'],
+        // Paint columns
+        'Paint': ['Item', 'Location', 'Finish', 'MFR', 'Color/Code', 'Notes'],
+        // Plumbing columns
+        'Plumbing': ['Item', 'MFR', 'Name', 'Finish', 'Config', 'SKU', 'Qty', 'Notes'],
         // Default columns for placeholder materials
         'Material 1': ['Item', 'MFR', 'Name', 'Color', 'Size', 'Notes'],
         'Material 2': ['Item', 'MFR', 'Name', 'Color', 'Size', 'Notes'],
@@ -121,6 +147,7 @@ const AltApp = {
             showAllToggle: document.getElementById('showAllToggle'),
             searchInput: document.getElementById('searchInput'),
             searchDropdown: document.getElementById('searchDropdown'),
+            sheetSelect: document.getElementById('sheetSelect'),
             selectedItemsList: document.getElementById('selectedItemsList'),
             errorMessage: document.getElementById('errorMessage'),
             statusBar: document.getElementById('statusBar'),
@@ -222,9 +249,26 @@ const AltApp = {
             this.render();
         });
 
+        // Sheet selector - switch active sheet
+        this.els.sheetSelect.addEventListener('change', (e) => {
+            const sheetName = e.target.value;
+            if (sheetName && this.state.allSheets[sheetName]) {
+                this.state.activeSheet = sheetName;
+                this.state.headers = this.state.allSheets[sheetName].headers;
+                this.state.spreadsheetData = this.state.allSheets[sheetName].data;
+                this.state.searchQuery = '';
+                this.state.searchDisplayLimit = 10; // Reset limit on sheet change
+                this.els.searchInput.value = '';
+                this.filterResults();
+                this.render();
+                this.updateStatus(`Switched to sheet: ${sheetName} (${this.state.spreadsheetData.length} rows)`);
+            }
+        });
+
         // Search input - show dropdown with filtered results
         this.els.searchInput.addEventListener('input', (e) => {
             this.state.searchQuery = e.target.value;
+            this.state.searchDisplayLimit = 10; // Reset limit on new search
             this.filterResults();
             this.renderSearchDropdown();
         });
@@ -502,6 +546,9 @@ const AltApp = {
         // Update product group select
         this.els.productGroupSelect.value = this.state.activeProductGroup;
 
+        // Update sheet selector dropdown
+        this.renderSheetSelector();
+
         // Render dynamic category tabs based on product group
         this.renderCategoryTabs();
 
@@ -515,6 +562,34 @@ const AltApp = {
         this.filterResults();
         this.renderColumnHeaders();
         this.renderSelectedItems();
+    },
+
+    /**
+     * Render sheet selector dropdown
+     */
+    renderSheetSelector() {
+        const select = this.els.sheetSelect;
+        const currentValue = this.state.activeSheet;
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        if (this.state.sheetNames.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = '-- Import a spreadsheet --';
+            select.appendChild(option);
+        } else {
+            this.state.sheetNames.forEach(sheetName => {
+                const option = document.createElement('option');
+                option.value = sheetName;
+                option.textContent = sheetName;
+                if (sheetName === currentValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
     },
 
     /**
@@ -549,6 +624,29 @@ const AltApp = {
         });
 
         return rooms;
+    },
+
+    /**
+     * Get product group ID for a given category
+     */
+    getProductGroupForCategory(category) {
+        for (const [groupId, categories] of Object.entries(this.PRODUCT_GROUPS)) {
+            if (categories.includes(category)) {
+                return groupId;
+            }
+        }
+        return '1'; // Default to first group
+    },
+
+    /**
+     * Get rooms for current product group (handles Paint special case)
+     */
+    getRoomsForProductGroup(productGroup) {
+        if (productGroup === '11') {
+            // Paint uses Interior, Doors, Exterior
+            return ['Interior', 'Doors', 'Exterior'];
+        }
+        return this.getRoomList();
     },
 
     /**
@@ -592,6 +690,86 @@ const AltApp = {
             return;
         }
 
+        // For Drywall Finish (product group 5), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '5') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Drywall
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Drywall';
+            }
+            return;
+        }
+
+        // For Fireplace (product group 6), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '6') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Fireplace
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Fireplace';
+            }
+            return;
+        }
+
+        // For Flooring (product group 7), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '7') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Flooring
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Flooring';
+            }
+            return;
+        }
+
+        // For Hardware (product group 8), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '8') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Hardware
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Hardware';
+            }
+            return;
+        }
+
+        // For Lighting (product group 9), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '9') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Lighting
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Lighting';
+            }
+            return;
+        }
+
+        // For Mirrors (product group 10), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '10') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Mirrors
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Mirrors';
+            }
+            return;
+        }
+
+        // For Paint (product group 11), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '11') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Paint
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Paint';
+            }
+            return;
+        }
+
+        // For Plumbing (product group 12), hide category tabs (single category, no field)
+        if (this.state.activeProductGroup === '12') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            // Set default active category to Plumbing
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Plumbing';
+            }
+            return;
+        }
+
         this.els.categoryTabsContainer.style.display = '';
 
         // Ensure activeCategory is valid for current group
@@ -619,7 +797,6 @@ const AltApp = {
      * Render room tabs dynamically
      */
     renderRoomTabs() {
-        const rooms = this.getRoomList();
         this.els.roomTabsContainer.innerHTML = '';
 
         // Hide room tabs for Countertops and Stone (no room selection needed)
@@ -630,6 +807,9 @@ const AltApp = {
         } else {
             this.els.roomTabsContainer.style.display = '';
         }
+
+        // For Paint (product group 11), show Interior, Doors, Exterior instead of regular rooms
+        const rooms = this.getRoomsForProductGroup(this.state.activeProductGroup);
 
         // Dim room tabs when in Show All mode
         this.els.roomTabsContainer.classList.toggle('dimmed', this.state.showAllView);
@@ -691,21 +871,30 @@ const AltApp = {
 
         this.els.searchDropdown.classList.add('active');
 
-        // Limit to first 10 results
-        results.slice(0, 10).forEach(row => {
+        const displayLimit = this.state.searchDisplayLimit;
+        const resultsToShow = results.slice(0, displayLimit);
+
+        resultsToShow.forEach(row => {
             const item = document.createElement('div');
             item.className = 'search-dropdown-item';
 
-            // Title: first few column values
-            const titleValues = this.state.headers.slice(0, 2).map(h => row[h]).filter(v => v).join(' - ');
+            // Title: first column value
+            const titleValue = row[this.state.headers[0]] || `Row ${row._rowNumber}`;
             const title = document.createElement('div');
             title.className = 'search-dropdown-item-title';
-            title.textContent = titleValues || `Row ${row._rowNumber}`;
+            title.textContent = titleValue;
 
-            // Details: remaining columns
+            // Details: all remaining columns
             const details = document.createElement('div');
             details.className = 'search-dropdown-item-details';
-            details.textContent = this.state.headers.slice(2, 4).map(h => `${h}: ${row[h] || ''}`).join(' | ');
+            const detailParts = this.state.headers.slice(1).map(h => {
+                const val = row[h];
+                if (val !== undefined && val !== null && String(val).trim() !== '') {
+                    return `${h}: ${val}`;
+                }
+                return null;
+            }).filter(Boolean);
+            details.textContent = detailParts.join(' | ');
 
             item.appendChild(title);
             item.appendChild(details);
@@ -718,12 +907,21 @@ const AltApp = {
             this.els.searchDropdown.appendChild(item);
         });
 
-        if (results.length > 10) {
+        // Show "load more" button if there are more results
+        const remaining = results.length - displayLimit;
+        if (remaining > 0) {
             const more = document.createElement('div');
-            more.className = 'search-dropdown-item';
+            more.className = 'search-dropdown-item search-dropdown-more';
             more.style.textAlign = 'center';
-            more.style.color = '#999';
-            more.textContent = `+ ${results.length - 10} more results...`;
+            more.style.color = 'var(--primary-color)';
+            more.style.fontWeight = '600';
+            more.style.cursor = 'pointer';
+            more.textContent = `Show 10 more (${remaining} remaining)`;
+            more.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.state.searchDisplayLimit += 10;
+                this.renderSearchDropdown();
+            });
             this.els.searchDropdown.appendChild(more);
         }
     },
@@ -889,7 +1087,9 @@ const AltApp = {
      * Render all rooms items with dividers
      */
     renderAllRoomsItems(category, columns) {
-        const rooms = this.getRoomList();
+        // Get appropriate rooms for the category's product group
+        const productGroup = this.getProductGroupForCategory(category);
+        const rooms = this.getRoomsForProductGroup(productGroup);
         let hasAnyItems = false;
 
         rooms.forEach(room => {
@@ -1094,9 +1294,15 @@ const AltApp = {
         '1': 'Countertop + Tile + Stone',
         '2': 'Appliances',
         '3': 'Cabinet',
-        '4': 'Product Group 4',
-        '5': 'Product Group 5',
-        '6': 'Product Group 6'
+        '4': 'Doors + Trim',
+        '5': 'Drywall Finish',
+        '6': 'Fireplace',
+        '7': 'Flooring',
+        '8': 'Hardware',
+        '9': 'Lighting',
+        '10': 'Mirrors',
+        '11': 'Paint',
+        '12': 'Plumbing'
     },
 
     /**
@@ -1416,7 +1622,7 @@ const AltApp = {
                         });
                     } else {
                         // Group by room
-                        const rooms = this.getRoomList();
+                        const rooms = this.getRoomsForProductGroup(groupId);
                         let isFirstRoom = true;
                         rooms.forEach(room => {
                             const roomItems = categoryItems[room] || [];
