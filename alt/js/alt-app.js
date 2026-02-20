@@ -18,12 +18,20 @@ const AltApp = {
         filteredResults: [],
         selectedItems: {}, // Structure: { category: { room: [items] } }
         showAllView: false, // Toggle between room view and all selections view
+        applianceSupplier: '', // Supplier name for appliances
+        cabinetFabricator: '', // Fabricator name for cabinets
+        cabinetRoomFields: {}, // Per-room fields for cabinets: { room: { countertopMaterial: '', sinkType: '' } }
         projectConfig: {
             configured: false,
             houseName: '',
             rooms: '',
             baths: '',
-            extraRooms: [] // Office, Den, Mudroom, Entry, Powder Bath, Pantry
+            extraRooms: [], // Office, Den, Mudroom, Entry, Powder Bath, Pantry
+            trimLevel: '',
+            address: '',
+            lotNumber: '',
+            blockNumber: '',
+            subdivisionName: ''
         }
     },
 
@@ -33,8 +41,8 @@ const AltApp = {
     // Product Groups and their categories
     PRODUCT_GROUPS: {
         '1': ['Tile', 'Countertops', 'Stone'],
-        '2': ['Material 1', 'Material 2', 'Material 3', 'Material 4'],
-        '3': ['Material 1', 'Material 2', 'Material 3', 'Material 4'],
+        '2': ['Appliance 1', 'Appliance 2', 'Appliance 3', 'Appliance 4'],
+        '3': ['Cabinet 1', 'Cabinet 2', 'Cabinet 3', 'Cabinet 4'],
         '4': ['Material 1', 'Material 2', 'Material 3', 'Material 4'],
         '5': ['Material 1', 'Material 2', 'Material 3', 'Material 4'],
         '6': ['Material 1', 'Material 2', 'Material 3', 'Material 4']
@@ -45,6 +53,16 @@ const AltApp = {
         'Tile': ['Item', 'MFR', 'Name', 'Color', 'Finish', 'Size', 'Layout', 'Grout', 'Trim', 'Notes'],
         'Countertops': ['Location', 'MFR', 'Name', 'Finish', 'Material', 'Installer', 'Thickness', 'Backsplash', 'Notes'],
         'Stone': ['Location', 'MFR', 'Name', 'Color', 'Grout', 'Layout', 'Accessories', 'Notes'],
+        // Appliance columns
+        'Appliance 1': ['Item', 'MFR', 'Size', 'Finish', 'Config', 'Sku', 'Qty', 'Notes'],
+        'Appliance 2': ['Item', 'MFR', 'Size', 'Finish', 'Config', 'Sku', 'Qty', 'Notes'],
+        'Appliance 3': ['Item', 'MFR', 'Size', 'Finish', 'Config', 'Sku', 'Qty', 'Notes'],
+        'Appliance 4': ['Item', 'MFR', 'Size', 'Finish', 'Config', 'Sku', 'Qty', 'Notes'],
+        // Cabinet columns
+        'Cabinet 1': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
+        'Cabinet 2': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
+        'Cabinet 3': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
+        'Cabinet 4': ['Location', 'Wood Species', 'Door Style', 'Finish', 'Color/Stain', 'Lacquer'],
         // Default columns for placeholder materials
         'Material 1': ['Item', 'MFR', 'Name', 'Color', 'Size', 'Notes'],
         'Material 2': ['Item', 'MFR', 'Name', 'Color', 'Size', 'Notes'],
@@ -91,6 +109,13 @@ const AltApp = {
             exportBtn: document.getElementById('exportBtn'),
             fileInput: document.getElementById('fileInput'),
             productGroupSelect: document.getElementById('productGroupSelect'),
+            supplierField: document.getElementById('supplierField'),
+            supplierInput: document.getElementById('supplierInput'),
+            fabricatorField: document.getElementById('fabricatorField'),
+            fabricatorInput: document.getElementById('fabricatorInput'),
+            cabinetRoomFieldsContainer: document.getElementById('cabinetRoomFieldsContainer'),
+            countertopMaterialInput: document.getElementById('countertopMaterialInput'),
+            sinkTypeInput: document.getElementById('sinkTypeInput'),
             categoryTabsContainer: document.getElementById('categoryTabs'),
             roomTabsContainer: document.getElementById('roomTabs'),
             showAllToggle: document.getElementById('showAllToggle'),
@@ -141,6 +166,38 @@ const AltApp = {
         // Product group select
         this.els.productGroupSelect.addEventListener('change', (e) => {
             this.setProductGroup(e.target.value);
+        });
+
+        // Supplier input (for Appliances)
+        this.els.supplierInput.addEventListener('change', (e) => {
+            this.state.applianceSupplier = e.target.value.trim();
+            this.saveState();
+        });
+
+        // Fabricator input (for Cabinet)
+        this.els.fabricatorInput.addEventListener('change', (e) => {
+            this.state.cabinetFabricator = e.target.value.trim();
+            this.saveState();
+        });
+
+        // Countertop Material input (for Cabinet, per room)
+        this.els.countertopMaterialInput.addEventListener('change', (e) => {
+            const room = this.state.activeRoom;
+            if (!this.state.cabinetRoomFields[room]) {
+                this.state.cabinetRoomFields[room] = {};
+            }
+            this.state.cabinetRoomFields[room].countertopMaterial = e.target.value.trim();
+            this.saveState();
+        });
+
+        // Sink Type input (for Cabinet, per room)
+        this.els.sinkTypeInput.addEventListener('change', (e) => {
+            const room = this.state.activeRoom;
+            if (!this.state.cabinetRoomFields[room]) {
+                this.state.cabinetRoomFields[room] = {};
+            }
+            this.state.cabinetRoomFields[room].sinkType = e.target.value.trim();
+            this.saveState();
         });
 
         // Category tabs (event delegation on container)
@@ -214,7 +271,12 @@ const AltApp = {
             houseName,
             rooms,
             baths,
-            extraRooms
+            extraRooms,
+            trimLevel: document.getElementById('trimLevelSelect').value,
+            address: document.getElementById('addressInput').value.trim(),
+            lotNumber: document.getElementById('lotNumberInput').value.trim(),
+            blockNumber: document.getElementById('blockNumberInput').value.trim(),
+            subdivisionName: document.getElementById('subdivisionNameInput').value.trim()
         };
 
         this.saveState();
@@ -260,6 +322,11 @@ const AltApp = {
             this.els.houseNameInput.value = houseName || '';
             this.els.roomsInput.value = rooms || '';
             this.els.bathsInput.value = baths || '';
+            document.getElementById('trimLevelSelect').value = this.state.projectConfig.trimLevel || '';
+            document.getElementById('addressInput').value = this.state.projectConfig.address || '';
+            document.getElementById('lotNumberInput').value = this.state.projectConfig.lotNumber || '';
+            document.getElementById('blockNumberInput').value = this.state.projectConfig.blockNumber || '';
+            document.getElementById('subdivisionNameInput').value = this.state.projectConfig.subdivisionName || '';
 
             // Restore checkbox states
             const extraRooms = this.state.projectConfig.extraRooms || [];
@@ -491,6 +558,42 @@ const AltApp = {
         const categories = this.PRODUCT_GROUPS[this.state.activeProductGroup] || [];
         this.els.categoryTabsContainer.innerHTML = '';
 
+        // Hide all special fields by default
+        this.els.supplierField.style.display = 'none';
+        this.els.fabricatorField.style.display = 'none';
+        this.els.cabinetRoomFieldsContainer.style.display = 'none';
+
+        // For Appliances (product group 2), hide category tabs and show supplier field
+        if (this.state.activeProductGroup === '2') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            this.els.supplierField.style.display = 'flex';
+            this.els.supplierInput.value = this.state.applianceSupplier || '';
+            // Set default active category to first appliance category
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Appliance 1';
+            }
+            return;
+        }
+
+        // For Cabinet (product group 3), hide category tabs and show fabricator + room fields
+        if (this.state.activeProductGroup === '3') {
+            this.els.categoryTabsContainer.style.display = 'none';
+            this.els.fabricatorField.style.display = 'flex';
+            this.els.fabricatorInput.value = this.state.cabinetFabricator || '';
+            this.els.cabinetRoomFieldsContainer.style.display = 'flex';
+            // Update room fields for current room
+            const roomFields = this.state.cabinetRoomFields[this.state.activeRoom] || {};
+            this.els.countertopMaterialInput.value = roomFields.countertopMaterial || '';
+            this.els.sinkTypeInput.value = roomFields.sinkType || '';
+            // Set default active category to first cabinet category
+            if (!categories.includes(this.state.activeCategory)) {
+                this.state.activeCategory = categories[0] || 'Cabinet 1';
+            }
+            return;
+        }
+
+        this.els.categoryTabsContainer.style.display = '';
+
         // Ensure activeCategory is valid for current group
         if (!categories.includes(this.state.activeCategory)) {
             this.state.activeCategory = categories[0] || 'Tile';
@@ -518,6 +621,15 @@ const AltApp = {
     renderRoomTabs() {
         const rooms = this.getRoomList();
         this.els.roomTabsContainer.innerHTML = '';
+
+        // Hide room tabs for Countertops and Stone (no room selection needed)
+        const noRoomCategories = ['Countertops', 'Stone'];
+        if (noRoomCategories.includes(this.state.activeCategory)) {
+            this.els.roomTabsContainer.style.display = 'none';
+            return;
+        } else {
+            this.els.roomTabsContainer.style.display = '';
+        }
 
         // Dim room tabs when in Show All mode
         this.els.roomTabsContainer.classList.toggle('dimmed', this.state.showAllView);
@@ -621,7 +733,9 @@ const AltApp = {
      */
     addItemToRoom(row) {
         const category = this.state.activeCategory;
-        const room = this.state.activeRoom;
+        // For Countertops and Stone, use a default key since no room selection
+        const noRoomCategories = ['Countertops', 'Stone'];
+        const room = noRoomCategories.includes(category) ? '_default' : this.state.activeRoom;
 
         // Initialize structure if needed
         if (!this.state.selectedItems[category]) {
@@ -687,7 +801,8 @@ const AltApp = {
 
         this.saveState();
         this.renderSelectedItems();
-        this.updateStatus(`Added item to ${room} (${category})`);
+        const statusMsg = room === '_default' ? `Added item to ${category}` : `Added item to ${room} (${category})`;
+        this.updateStatus(statusMsg);
     },
 
     /**
@@ -695,8 +810,19 @@ const AltApp = {
      */
     removeItemFromRoom(itemId) {
         const category = this.state.activeCategory;
+        const noRoomCategories = ['Countertops', 'Stone'];
 
-        if (this.state.showAllView) {
+        if (noRoomCategories.includes(category)) {
+            // For Countertops/Stone, remove from _default room
+            if (this.state.selectedItems[category] && this.state.selectedItems[category]['_default']) {
+                const idx = this.state.selectedItems[category]['_default'].findIndex(it => it._id === itemId);
+                if (idx !== -1) {
+                    this.state.selectedItems[category]['_default'].splice(idx, 1);
+                    this.saveState();
+                    this.render();
+                }
+            }
+        } else if (this.state.showAllView) {
             // In aggregated view, search all rooms for the item
             const categoryItems = this.state.selectedItems[category];
             if (categoryItems) {
@@ -730,16 +856,31 @@ const AltApp = {
     renderSelectedItems() {
         const category = this.state.activeCategory;
         const columns = this.CATEGORY_COLUMNS[category];
+        const noRoomCategories = ['Countertops', 'Stone'];
 
         this.els.selectedItemsList.innerHTML = '';
 
-        if (this.state.showAllView) {
+        if (noRoomCategories.includes(category)) {
+            // For Countertops/Stone, show items from _default room
+            const items = (this.state.selectedItems[category] && this.state.selectedItems[category]['_default']) || [];
+            this.renderRoomItems('_default', items, columns, category, false);
+        } else if (this.state.showAllView) {
             // Aggregated view - show all rooms with dividers
             this.renderAllRoomsItems(category, columns);
         } else {
-            // Single room view
+            // Single room view - still show room header
             const room = this.state.activeRoom;
             const items = (this.state.selectedItems[category] && this.state.selectedItems[category][room]) || [];
+            
+            // Add room divider header
+            const divider = document.createElement('div');
+            divider.className = 'room-divider';
+            divider.innerHTML = `
+                <span class="room-divider-label">${room} (${items.length})</span>
+                <span class="room-divider-line"></span>
+            `;
+            this.els.selectedItemsList.appendChild(divider);
+            
             this.renderRoomItems(room, items, columns, category, false);
         }
     },
@@ -798,8 +939,8 @@ const AltApp = {
                 const cell = document.createElement('div');
                 cell.className = 'selected-item-cell';
 
-                // Check if this column should be a dropdown (for Tile: Layout, Grout, Trim when empty)
-                const isDropdownColumn = category === 'Tile' && this.DROPDOWN_OPTIONS[col] && !item[col];
+                // Check if this column should be a dropdown (for Tile: Layout, Grout, Trim)
+                const isDropdownColumn = category === 'Tile' && this.DROPDOWN_OPTIONS[col];
 
                 if (isDropdownColumn) {
                     const select = document.createElement('select');
@@ -948,6 +1089,16 @@ const AltApp = {
         return count;
     },
 
+    // Product Group Names for export
+    PRODUCT_GROUP_NAMES: {
+        '1': 'Countertop + Tile + Stone',
+        '2': 'Appliances',
+        '3': 'Cabinet',
+        '4': 'Product Group 4',
+        '5': 'Product Group 5',
+        '6': 'Product Group 6'
+    },
+
     /**
      * Export all selected items to Excel
      */
@@ -971,74 +1122,404 @@ const AltApp = {
             // Summary sheet
             const summaryWs = workbook.addWorksheet('Summary');
             summaryWs.addRow(['House Name', this.state.projectConfig.houseName || '']);
+            summaryWs.addRow(['Trim Level', this.state.projectConfig.trimLevel || '']);
+            summaryWs.addRow(['Address', this.state.projectConfig.address || '']);
+            summaryWs.addRow(['Subdivision', this.state.projectConfig.subdivisionName || '']);
+            summaryWs.addRow(['Lot Number', this.state.projectConfig.lotNumber || '']);
+            summaryWs.addRow(['Block Number', this.state.projectConfig.blockNumber || '']);
             summaryWs.addRow(['Rooms', this.state.projectConfig.rooms || '']);
             summaryWs.addRow(['Baths', this.state.projectConfig.baths || '']);
             summaryWs.addRow(['Exported At', new Date().toLocaleString()]);
 
-            // Create sheet per category that has items
-            const categories = Object.keys(this.CATEGORY_COLUMNS);
-            
-            categories.forEach(category => {
-                const categoryItems = this.state.selectedItems[category];
-                if (!categoryItems) return;
-
-                // Collect all items across all rooms for this category
-                const allItems = [];
-                Object.entries(categoryItems).forEach(([room, items]) => {
-                    items.forEach(item => {
-                        allItems.push({ ...item, _room: room });
-                    });
-                });
-
-                if (allItems.length === 0) return;
-
-                const columns = ['Room', ...this.CATEGORY_COLUMNS[category]];
-                const ws = workbook.addWorksheet(category);
-
-                // Header row
-                const headerRow = ws.addRow(columns);
-                headerRow.eachCell(cell => {
-                    cell.font = { bold: true };
-                    cell.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: 'FF808080' }
-                    };
-                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-                });
-
-                // Group by room (use dynamic room list)
-                const rooms = this.getRoomList();
-                rooms.forEach(room => {
-                    const roomItems = categoryItems[room] || [];
-                    if (roomItems.length === 0) return;
-
-                    // Room section header
-                    const roomRow = ws.addRow([room]);
-                    ws.mergeCells(roomRow.number, 1, roomRow.number, columns.length);
-                    const roomCell = ws.getCell(roomRow.number, 1);
-                    roomCell.font = { bold: true };
-                    roomCell.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: 'FFC6F6D5' }
-                    };
-
-                    // Items
-                    roomItems.forEach(item => {
-                        const rowData = columns.map(col => {
-                            if (col === 'Room') return room;
-                            return item[col] !== undefined ? item[col] : '';
+            // Create one sheet per product group that has items
+            Object.entries(this.PRODUCT_GROUPS).forEach(([groupId, categories]) => {
+                // Check if this product group has any items
+                let groupHasItems = false;
+                categories.forEach(category => {
+                    const categoryItems = this.state.selectedItems[category];
+                    if (categoryItems) {
+                        Object.values(categoryItems).forEach(roomItems => {
+                            if (roomItems && roomItems.length > 0) groupHasItems = true;
                         });
-                        ws.addRow(rowData);
+                    }
+                });
+
+                if (!groupHasItems) return;
+
+                // Create sheet for this product group
+                const groupName = this.PRODUCT_GROUP_NAMES[groupId] || `Product Group ${groupId}`;
+                const ws = workbook.addWorksheet(groupName.substring(0, 31)); // Excel sheet name limit
+
+                // Pre-calculate max columns for header rows
+                let maxColumns = 0;
+                categories.forEach(category => {
+                    const categoryItems = this.state.selectedItems[category];
+                    if (!categoryItems) return;
+                    let categoryHasItems = false;
+                    Object.values(categoryItems).forEach(roomItems => {
+                        if (roomItems && roomItems.length > 0) categoryHasItems = true;
+                    });
+                    if (!categoryHasItems) return;
+                    
+                    let colCount = this.CATEGORY_COLUMNS[category].length;
+                    if (category === 'Stone') colCount += 2;
+                    else if (category === 'Countertops') colCount += 1;
+                    maxColumns = Math.max(maxColumns, colCount);
+                });
+
+                // Project config for header rows
+                const config = this.state.projectConfig;
+                
+                // Header Row 1: Tab Name - Subdivision Lot # Block #
+                const headerText1 = `${groupName.toUpperCase()} - ${(config.subdivisionName || '').toUpperCase()} LOT ${(config.lotNumber || '').toUpperCase()} BLOCK ${(config.blockNumber || '').toUpperCase()}`;
+                const headerRow1 = ws.addRow([headerText1]);
+                headerRow1.height = 30;
+                ws.mergeCells(headerRow1.number, 1, headerRow1.number, maxColumns);
+                const headerCell1 = ws.getCell(headerRow1.number, 1);
+                headerCell1.font = { bold: true, color: { argb: 'FF000000' } };
+                headerCell1.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF3CB371' } // Medium Sea Green (lighter)
+                };
+                headerCell1.alignment = { horizontal: 'center', vertical: 'middle' };
+                headerCell1.border = {
+                    top: { style: 'medium', color: { argb: 'FF000000' } },
+                    left: { style: 'medium', color: { argb: 'FF000000' } },
+                    bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                    right: { style: 'medium', color: { argb: 'FF000000' } }
+                };
+
+                // Header Row 2: Address + spacing + Trim Level + spacing + House Name
+                // Create array with values at specific positions for spacing effect
+                const headerRow2Data = [];
+                headerRow2Data[0] = (config.address || '').toUpperCase();
+                // Position trim level after ~5 columns
+                const trimPos = Math.min(5, Math.floor(maxColumns / 3));
+                headerRow2Data[trimPos] = (config.trimLevel || '').toUpperCase();
+                // Position house name after another ~5 columns  
+                const housePos = Math.min(trimPos + 5, Math.floor(2 * maxColumns / 3));
+                headerRow2Data[housePos] = (config.houseName || '').toUpperCase();
+                
+                const headerRow2 = ws.addRow(headerRow2Data);
+                ws.mergeCells(headerRow2.number, 1, headerRow2.number, maxColumns);
+                const headerCell2 = ws.getCell(headerRow2.number, 1);
+                // Combine all values into single merged cell with tab spacing
+                headerCell2.value = `${(config.address || '').toUpperCase()}          ${(config.trimLevel || '').toUpperCase()}          ${(config.houseName || '').toUpperCase()}`;
+                headerCell2.font = { bold: true };
+                headerCell2.alignment = { horizontal: 'center', vertical: 'middle' };
+                headerCell2.border = {
+                    top: { style: 'medium', color: { argb: 'FF000000' } },
+                    left: { style: 'medium', color: { argb: 'FF000000' } },
+                    bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                    right: { style: 'medium', color: { argb: 'FF000000' } }
+                };
+
+                // Blank row after header
+                ws.addRow([]);
+
+                // Add each category that has items
+                categories.forEach(category => {
+                    const categoryItems = this.state.selectedItems[category];
+                    if (!categoryItems) return;
+
+                    // Collect all items across all rooms for this category
+                    let categoryHasItems = false;
+                    Object.values(categoryItems).forEach(roomItems => {
+                        if (roomItems && roomItems.length > 0) categoryHasItems = true;
                     });
 
-                    // Spacer
+                    if (!categoryHasItems) return;
+
+                    // For Countertops add 1 blank column, for Stone add 2 blank columns after Notes for merging
+                    let columns;
+                    let mergeCount = 0; // How many extra columns to merge with Notes
+                    if (category === 'Stone') {
+                        columns = [...this.CATEGORY_COLUMNS[category], '', ''];
+                        mergeCount = 2;
+                    } else if (category === 'Countertops') {
+                        columns = [...this.CATEGORY_COLUMNS[category], ''];
+                        mergeCount = 1;
+                    } else {
+                        columns = [...this.CATEGORY_COLUMNS[category]];
+                    }
+                    const notesColIndex = columns.indexOf('Notes') + 1; // 1-based for ExcelJS
+                    const needsMerge = mergeCount > 0;
+
+                    // Category header - black background with white text (capitalized)
+                    const categoryRow = ws.addRow([category.toUpperCase()]);
+                    ws.mergeCells(categoryRow.number, 1, categoryRow.number, columns.length);
+                    const categoryCell = ws.getCell(categoryRow.number, 1);
+                    categoryCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    categoryCell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FF000000' }
+                    };
+                    categoryCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+                    // Blank row after category header
+                    ws.addRow([]);
+
+                    // Row border style (includes left/right for first/last cells)
+                    const rowBorderMiddle = {
+                        top: { style: 'thin', color: { argb: 'FF000000' } },
+                        bottom: { style: 'thin', color: { argb: 'FF000000' } }
+                    };
+                    const rowBorderLeft = {
+                        top: { style: 'thin', color: { argb: 'FF000000' } },
+                        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                        left: { style: 'thin', color: { argb: 'FF000000' } }
+                    };
+                    const rowBorderRight = {
+                        top: { style: 'thin', color: { argb: 'FF000000' } },
+                        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                        right: { style: 'thin', color: { argb: 'FF000000' } }
+                    };
+                    const rowBorderBoth = {
+                        top: { style: 'thin', color: { argb: 'FF000000' } },
+                        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                        left: { style: 'thin', color: { argb: 'FF000000' } },
+                        right: { style: 'thin', color: { argb: 'FF000000' } }
+                    };
+                    // Thick row border style for room headers
+                    const thickRowBorder = {
+                        top: { style: 'medium', color: { argb: 'FF000000' } },
+                        left: { style: 'medium', color: { argb: 'FF000000' } },
+                        bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                        right: { style: 'medium', color: { argb: 'FF000000' } }
+                    };
+
+                    // Column headers (capitalized)
+                    const headerRow = ws.addRow(columns.map(col => col.toUpperCase()));
+                    headerRow.eachCell((cell, colNumber) => {
+                        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FF808080' }
+                        };
+                        // Apply appropriate border based on position
+                        if (colNumber === 1 && columns.length === 1) {
+                            cell.border = rowBorderBoth;
+                        } else if (colNumber === 1) {
+                            cell.border = rowBorderLeft;
+                        } else if (colNumber === columns.length) {
+                            cell.border = rowBorderRight;
+                        } else {
+                            cell.border = rowBorderMiddle;
+                        }
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    });
+                    // Merge Notes header with blank columns for Countertops/Stone
+                    if (needsMerge && notesColIndex > 0) {
+                        ws.mergeCells(headerRow.number, notesColIndex, headerRow.number, notesColIndex + mergeCount);
+                        // Ensure merged header cell has right border
+                        const mergedHeaderCell = ws.getCell(headerRow.number, notesColIndex);
+                        mergedHeaderCell.border = {
+                            top: { style: 'thin', color: { argb: 'FF000000' } },
+                            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                            right: { style: 'thin', color: { argb: 'FF000000' } }
+                        };
+                    }
+
+                    // For Appliances (product group 2), add supplier row after column headers
+                    if (groupId === '2' && this.state.applianceSupplier) {
+                        // Blank row before supplier
+                        ws.addRow([]);
+                        
+                        // Supplier row
+                        const supplierText = `SUPPLIER: ${this.state.applianceSupplier.toUpperCase()}`;
+                        const supplierRow = ws.addRow([supplierText]);
+                        supplierRow.height = 25;
+                        ws.mergeCells(supplierRow.number, 1, supplierRow.number, columns.length);
+                        const supplierCell = ws.getCell(supplierRow.number, 1);
+                        supplierCell.font = { bold: true };
+                        supplierCell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFC6F6D5' } // Light green
+                        };
+                        supplierCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                        supplierCell.border = thickRowBorder;
+                        
+                        // Blank row after supplier
+                        ws.addRow([]);
+                    }
+
+                    // For Cabinet (product group 3), add fabricator row after column headers
+                    if (groupId === '3' && this.state.cabinetFabricator) {
+                        // Blank row before fabricator
+                        ws.addRow([]);
+                        
+                        // Fabricator row
+                        const fabricatorText = `FABRICATOR: ${this.state.cabinetFabricator.toUpperCase()}`;
+                        const fabricatorRow = ws.addRow([fabricatorText]);
+                        fabricatorRow.height = 25;
+                        ws.mergeCells(fabricatorRow.number, 1, fabricatorRow.number, columns.length);
+                        const fabricatorCell = ws.getCell(fabricatorRow.number, 1);
+                        fabricatorCell.font = { bold: true };
+                        fabricatorCell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFC6F6D5' } // Light green
+                        };
+                        fabricatorCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                        fabricatorCell.border = thickRowBorder;
+                        
+                        // Blank row after fabricator
+                        ws.addRow([]);
+                    }
+
+                    // Categories that don't need room grouping
+                    const noRoomCategories = ['Countertops', 'Stone'];
+                    const skipRoomHeaders = noRoomCategories.includes(category);
+
+                    // For categories without room grouping, get all items regardless of room key
+                    if (skipRoomHeaders) {
+                        // Collect all items from all room keys
+                        Object.values(categoryItems).forEach(roomItems => {
+                            roomItems.forEach(item => {
+                                const rowData = columns.map(col => {
+                                    if (col === '') return ''; // Blank merge column
+                                    return item[col] !== undefined ? item[col] : '';
+                                });
+                                const dataRow = ws.addRow(rowData);
+                                dataRow.height = 25;
+                                // Apply row border and center alignment to all data cells
+                                dataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                    // Apply appropriate border based on position
+                                    if (colNumber === 1 && columns.length === 1) {
+                                        cell.border = rowBorderBoth;
+                                    } else if (colNumber === 1) {
+                                        cell.border = rowBorderLeft;
+                                    } else if (colNumber === columns.length) {
+                                        cell.border = rowBorderRight;
+                                    } else {
+                                        cell.border = rowBorderMiddle;
+                                    }
+                                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                });
+                                // Merge Notes with blank column(s) for Countertops/Stone
+                                if (needsMerge && notesColIndex > 0) {
+                                    ws.mergeCells(dataRow.number, notesColIndex, dataRow.number, notesColIndex + mergeCount);
+                                    // Ensure merged cell has right border (lost during merge)
+                                    const mergedCell = ws.getCell(dataRow.number, notesColIndex);
+                                    mergedCell.border = {
+                                        top: { style: 'thin', color: { argb: 'FF000000' } },
+                                        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                                        right: { style: 'thin', color: { argb: 'FF000000' } }
+                                    };
+                                    mergedCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                }
+                            });
+                        });
+                    } else {
+                        // Group by room
+                        const rooms = this.getRoomList();
+                        let isFirstRoom = true;
+                        rooms.forEach(room => {
+                            const roomItems = categoryItems[room] || [];
+                            if (roomItems.length === 0) return;
+
+                            // Blank row between rooms (not before first room)
+                            if (!isFirstRoom) {
+                                ws.addRow([]);
+                            }
+                            isFirstRoom = false;
+
+                            // Room section header (capitalized, thick border)
+                            const roomRow = ws.addRow([room.toUpperCase()]);
+                            ws.mergeCells(roomRow.number, 1, roomRow.number, columns.length);
+                            const roomCell = ws.getCell(roomRow.number, 1);
+                            roomCell.font = { bold: true };
+                            roomCell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFC6F6D5' }
+                            };
+                            roomCell.border = thickRowBorder;
+
+                            // For Cabinet (product group 3), add Countertop Material and Sink Type rows
+                            if (groupId === '3') {
+                                const roomFields = this.state.cabinetRoomFields[room] || {};
+                                
+                                if (roomFields.countertopMaterial) {
+                                    const ctMaterialRow = ws.addRow([`Countertop Material: ${roomFields.countertopMaterial}`]);
+                                    ctMaterialRow.height = 15;
+                                    ws.mergeCells(ctMaterialRow.number, 1, ctMaterialRow.number, columns.length);
+                                    const ctMaterialCell = ws.getCell(ctMaterialRow.number, 1);
+                                    ctMaterialCell.font = { bold: false };
+                                    ctMaterialCell.fill = {
+                                        type: 'pattern',
+                                        pattern: 'solid',
+                                        fgColor: { argb: 'FFD3D3D3' } // Light grey
+                                    };
+                                    ctMaterialCell.alignment = { horizontal: 'left', vertical: 'middle' };
+                                    ctMaterialCell.border = rowBorderBoth;
+                                }
+                                
+                                if (roomFields.sinkType) {
+                                    const sinkTypeRow = ws.addRow([`Sink Type: ${roomFields.sinkType}`]);
+                                    sinkTypeRow.height = 15;
+                                    ws.mergeCells(sinkTypeRow.number, 1, sinkTypeRow.number, columns.length);
+                                    const sinkTypeCell = ws.getCell(sinkTypeRow.number, 1);
+                                    sinkTypeCell.font = { bold: false };
+                                    sinkTypeCell.fill = {
+                                        type: 'pattern',
+                                        pattern: 'solid',
+                                        fgColor: { argb: 'FFD3D3D3' } // Light grey
+                                    };
+                                    sinkTypeCell.alignment = { horizontal: 'left', vertical: 'middle' };
+                                    sinkTypeCell.border = rowBorderBoth;
+                                }
+                            }
+
+                            // Items
+                            roomItems.forEach(item => {
+                                const rowData = columns.map(col => {
+                                    if (col === '') return ''; // Blank merge column
+                                    return item[col] !== undefined ? item[col] : '';
+                                });
+                                const dataRow = ws.addRow(rowData);
+                                dataRow.height = 25;
+                                // Apply row border and center alignment to all data cells
+                                dataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                    // Apply appropriate border based on position
+                                    if (colNumber === 1 && columns.length === 1) {
+                                        cell.border = rowBorderBoth;
+                                    } else if (colNumber === 1) {
+                                        cell.border = rowBorderLeft;
+                                    } else if (colNumber === columns.length) {
+                                        cell.border = rowBorderRight;
+                                    } else {
+                                        cell.border = rowBorderMiddle;
+                                    }
+                                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                });
+                                // Merge Notes with blank column(s)
+                                if (needsMerge && notesColIndex > 0) {
+                                    ws.mergeCells(dataRow.number, notesColIndex, dataRow.number, notesColIndex + mergeCount);
+                                    // Ensure merged cell has right border (lost during merge)
+                                    const mergedCell = ws.getCell(dataRow.number, notesColIndex);
+                                    mergedCell.border = {
+                                        top: { style: 'thin', color: { argb: 'FF000000' } },
+                                        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                                        right: { style: 'thin', color: { argb: 'FF000000' } }
+                                    };
+                                    mergedCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                }
+                            });
+                        });
+                    }
+
+                    // Spacer between categories
+                    ws.addRow([]);
                     ws.addRow([]);
                 });
 
-                // Auto-size columns
-                this.autosizeExcelColumns(ws, columns.length);
+                // Auto-size columns, passing columns array to handle Notes
+                this.autosizeExcelColumns(ws, maxColumns, categories);
             });
 
             // Generate filename
@@ -1059,17 +1540,12 @@ const AltApp = {
     /**
      * Auto-size Excel columns
      */
-    autosizeExcelColumns(ws, colCount) {
+    autosizeExcelColumns(ws, colCount, categories) {
         try {
+            // Set all columns to width of 15
             for (let i = 1; i <= colCount; i++) {
                 const col = ws.getColumn(i);
-                let max = 10;
-                col.eachCell({ includeEmpty: true }, (cell) => {
-                    const v = cell.value;
-                    const s = v === null || v === undefined ? '' : String(v);
-                    max = Math.max(max, s.length);
-                });
-                col.width = Math.min(Math.max(max + 2, 10), 60);
+                col.width = 15;
             }
         } catch (e) {
             console.warn('Autosize failed:', e);

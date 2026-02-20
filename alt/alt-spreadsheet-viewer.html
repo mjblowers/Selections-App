@@ -14,7 +14,6 @@
     <!-- Standalone Styles -->
     <link rel="stylesheet" href="css/alt-styles.css" />
 </head>
-
 <body>
     <div class="container">
         <!-- Header with Settings Cog -->
@@ -30,6 +29,33 @@
                 <div class="config-field">
                     <label for="houseNameInput">House Name</label>
                     <input type="text" id="houseNameInput" placeholder="Enter house name" />
+                </div>
+                <div class="config-field">
+                    <label for="trimLevelSelect">Trim Level</label>
+                    <select id="trimLevelSelect">
+                        <option value="">Select Trim Level</option>
+                        <option value="Signature Select Series">Signature Select Series</option>
+                        <option value="Signature">Signature</option>
+                        <option value="Dump">Dump</option>
+                    </select>
+                </div>
+                <div class="config-field">
+                    <label for="addressInput">Address</label>
+                    <input type="text" id="addressInput" placeholder="Enter address" />
+                </div>
+                <div class="config-row">
+                    <div class="config-field">
+                        <label for="lotNumberInput">Lot Number</label>
+                        <input type="text" id="lotNumberInput" placeholder="Lot #" />
+                    </div>
+                    <div class="config-field">
+                        <label for="blockNumberInput">Block Number</label>
+                        <input type="text" id="blockNumberInput" placeholder="Block #" />
+                    </div>
+                    <div class="config-field">
+                        <label for="subdivisionNameInput">Subdivision</label>
+                        <input type="text" id="subdivisionNameInput" placeholder="Subdivision" />
+                    </div>
                 </div>
                 <div class="config-row">
                     <div class="config-field">
@@ -80,12 +106,22 @@
                 <div class="product-group-selector">
                     <select id="productGroupSelect" class="product-group-select">
                         <option value="1">Countertop + Tile + Stone</option>
-                        <option value="2">Product Group 2</option>
-                        <option value="3">Product Group 3</option>
+                        <option value="2">Appliances</option>
+                        <option value="3">Cabinet</option>
                         <option value="4">Product Group 4</option>
                         <option value="5">Product Group 5</option>
                         <option value="6">Product Group 6</option>
                     </select>
+                </div>
+                <!-- Supplier field (shown for Appliances) -->
+                <div id="supplierField" class="supplier-field" style="display:none;">
+                    <label for="supplierInput">Supplier:</label>
+                    <input type="text" id="supplierInput" placeholder="Enter supplier name" />
+                </div>
+                <!-- Fabricator field (shown for Cabinet) -->
+                <div id="fabricatorField" class="supplier-field" style="display:none;">
+                    <label for="fabricatorInput">Fabricator:</label>
+                    <input type="text" id="fabricatorInput" placeholder="Enter fabricator name" />
                 </div>
                 <div id="categoryTabs" class="category-tabs">
                     <!-- Category tabs rendered dynamically based on product group -->
@@ -111,6 +147,18 @@
 
         <!-- Column Header Row -->
         <div id="columnHeaderRow" class="column-header-row"></div>
+
+        <!-- Cabinet room fields (shown for Cabinet, per room) -->
+        <div id="cabinetRoomFieldsContainer" class="cabinet-room-fields" style="display:none;">
+            <div class="cabinet-room-field">
+                <label for="countertopMaterialInput">Countertop Material:</label>
+                <input type="text" id="countertopMaterialInput" placeholder="Enter countertop material" />
+            </div>
+            <div class="cabinet-room-field">
+                <label for="sinkTypeInput">Sink Type:</label>
+                <input type="text" id="sinkTypeInput" placeholder="Enter sink type" />
+            </div>
+        </div>
 
         <!-- Selected Items for Current Room/Category -->
         <div id="selectedItemsSection" class="selected-items-section">
